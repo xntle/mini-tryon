@@ -1,11 +1,9 @@
-import { usePopularProducts, ProductCard } from "@shopify/shop-minis-react";
-
-import PhotoGalleryButton from "./components/GalleryButton";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { Welcome } from "./pages/welcome";
 import Saved from "./pages/saved";
 import TryOn from "./pages/tryon";
 import Home from "./pages/home";
+import NavBar from "./components/Navbar";
 
 export function App() {
   return (
@@ -24,6 +22,7 @@ export function App() {
         <Route path="/saved" element={<Saved />} />
         <Route path="/tryon" element={<TryOn />} />
       </Routes>
+      <NavBar />
     </Router>
   );
 }

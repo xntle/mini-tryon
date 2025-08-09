@@ -1,29 +1,30 @@
 import { Link, useLocation } from "react-router-dom";
-import { Camera, Star, Flame } from "lucide-react";
+import { Camera, Star, Flame, Home, Plus } from "lucide-react";
 
 export default function NavBar() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-      <div className="flex items-center justify-between px-6 h-16">
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center bg-transparent rounded-full px-6 py-2">
+      <div className="flex items-center justify-between gap-12 px-6 h-16">
         {/* Left: Trending */}
         <Link
-          to="/trending"
+          to="/home"
           className={`flex flex-col items-center text-xs ${
-            pathname === "/trending" ? "text-blue-600" : "text-gray-500"
+            pathname === "/home" ? "text-blue-600" : "text-gray-500"
           }`}
         >
-          <Flame className="h-5 w-5 mb-1" />
-          Trending
+          <Home className="h-5 w-5 mb-1" />
         </Link>
 
         {/* Middle: Try-On */}
         <Link
           to="/tryon"
-          className="relative flex items-center justify-center -mt-6 bg-black text-white rounded-full w-14 h-14 shadow-md border-4 border-white"
+          className={`flex flex-col items-center text-xs ${
+            pathname === "/tryon" ? "text-blue-600" : "text-gray-500"
+          }`}
         >
-          <Camera className="h-6 w-6" />
+          <Plus className="h-5 w-5 mb-1" />
         </Link>
 
         {/* Right: Saved */}
@@ -34,7 +35,6 @@ export default function NavBar() {
           }`}
         >
           <Star className="h-5 w-5 mb-1" />
-          Saved
         </Link>
       </div>
     </nav>
