@@ -16,7 +16,7 @@ import TryonResult from "./pages/tryon/result";
 
 function AppRoutes() {
   const location = useLocation();
-  const hideNavOn = ["/tryon", "/yourfit"];
+  const hideNavOn = ["/yourfit"];
 
   return (
     <>
@@ -31,6 +31,7 @@ function AppRoutes() {
           Try On
         </Link>
         <Link to="/saved">Saved</Link>
+        <Link to="/tryon/result">falai</Link>
       </nav>
 
       <Routes>
@@ -38,7 +39,9 @@ function AppRoutes() {
         <Route path="/home" element={<Home />} />
         <Route path="/saved" element={<Saved />} />
         <Route path="/yourfit" element={<YourFit />} />
+        <Route path="/tryon" element={<TryOn />} />
         <Route path="/tryon/result" element={<TryonResult />} />
+        <Route path="/shop" element={<Shop />} />
       </Routes>
 
       {!hideNavOn.includes(location.pathname) && <NavBar />}

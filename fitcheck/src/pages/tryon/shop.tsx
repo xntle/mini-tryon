@@ -1,11 +1,13 @@
-// src/pages/SelectTryOn.tsx
 import { useState, useMemo } from "react";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Shop() {
   const { products } = useSavedProducts();
   const navigate = useNavigate();
+  const { state } = useLocation() as { state?: { photo?: string } };
+  const photo = state?.photo;
+
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const count = useMemo(
@@ -33,7 +35,7 @@ export default function Shop() {
       .filter(([, v]) => v)
       .map(([k]) => k);
 
-    navigate("/yourfit", { state: { productIds } });
+    navigate("/yourfit", { state: { productIds, photo } });
   }
 
   if (!products?.length) {
@@ -63,6 +65,22 @@ export default function Shop() {
         </div>
       </div>
 
+      {/* Show uploaded photo if exists */}
+      {photo && (
+        <div className="mb-6">
+          <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+            <img
+              src={photo}
+              alt="Your selected look"
+              className="w-full object-cover"
+            />
+          </div>
+          <p className="text-sm text-gray-500 mt-2 text-center">
+            This is the photo we'll use for your try-on.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         {products.map((p) => {
           const isSelected = !!selected[p.id];
@@ -73,7 +91,6 @@ export default function Shop() {
                 isSelected ? "ring-2 ring-blue-600" : "border-gray-200"
               }`}
             >
-              {/* Make the whole tile toggle selection */}
               <button
                 type="button"
                 onClick={() => toggle(p.id)}
@@ -81,12 +98,9 @@ export default function Shop() {
                 aria-pressed={isSelected}
                 aria-label={`Select ${p.title}`}
               />
-              {/* Product UI below the click-capture layer */}
               <div className="pointer-events-none">
                 <ProductCard product={p} />
               </div>
-
-              {/* Checkbox badge */}
               <div className="absolute top-2 right-2 z-20">
                 <span
                   className={`h-6 w-6 inline-flex items-center justify-center rounded-full border bg-white ${

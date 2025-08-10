@@ -1,11 +1,16 @@
 import React, { useRef, useState } from "react";
-import { Plus, Camera as CameraIcon, Image as ImageIcon, X } from "lucide-react";
+import {
+  Plus,
+  Camera as CameraIcon,
+  Image as ImageIcon,
+  X,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
-// Same spacing/formatting; now supports a morph animation from + circle to the sheet
 export type PhotoGalleryButtonProps = {
-  open?: boolean; // controlled
-  onOpenChange?: (open: boolean) => void; // controlled
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onSelected?: (file: File, dataUrl: string) => void;
 };
 
@@ -17,9 +22,9 @@ export default function PhotoGalleryButton({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = open !== undefined;
   const show = isControlled ? (open as boolean) : internalOpen;
-  const setShow = (v: boolean) => (isControlled ? onOpenChange?.(v) : setInternalOpen(v));
+  const setShow = (v: boolean) =>
+    isControlled ? onOpenChange?.(v) : setInternalOpen(v);
 
-  // Let TryOn listen and nudge UI when sheet opens/closes
   const emit = (v: boolean) =>
     window.dispatchEvent(new CustomEvent("fc:sheet", { detail: v }));
   const applyOpen = (v: boolean) => {
@@ -29,6 +34,7 @@ export default function PhotoGalleryButton({
 
   const libRef = useRef<HTMLInputElement | null>(null);
   const camRef = useRef<HTMLInputElement | null>(null);
+  const navigate = useNavigate();
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -37,17 +43,17 @@ export default function PhotoGalleryButton({
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result);
-      onSelected?.(file, dataUrl);
+      // go straight to /shop with photo in state
+      navigate("/shop", { state: { photo: dataUrl } });
     };
     reader.readAsDataURL(file);
 
-    e.target.value = ""; // reset
-    applyOpen(false);     // close + notify
+    e.target.value = "";
+    applyOpen(false);
   }
 
   return (
     <>
-      {/* Morph host: when closed we render the round +; when open we render the sheet. */}
       <AnimatePresence initial={false} mode="popLayout">
         {!show ? (
           <motion.button
@@ -55,21 +61,22 @@ export default function PhotoGalleryButton({
             layoutId="fab"
             onClick={() => applyOpen(true)}
             aria-label="Open image search"
-            className="inline-grid place-items-center h-14 w-14 rounded-full bg-violet-600 text-white shadow-xl active:scale-95"
+            className="inline-grid place-items-center h-14 w-14 rounded-full bg-neutral-900 text-white shadow-xl active:scale-95"
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
           >
             <Plus className="h-6 w-6" />
           </motion.button>
         ) : (
-          <motion.div key="sheetWrap" className="fixed inset-0 z-50 pointer-events-none">
-            {/* The element below shares the same layoutId as the FAB, so it morphs */}
+          <motion.div
+            key="sheetWrap"
+            className="fixed inset-0 z-50 pointer-events-none"
+          >
             <motion.div
               layoutId="fab"
               initial={false}
               className="pointer-events-auto absolute bottom-2 left-1/2 -translate-x-1/2 w-[92vw] max-w-[520px] rounded-3xl bg-black text-white shadow-2xl"
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
-              {/* We animate padding/opacity of inner content so it fades in as the box expands */}
               <motion.div
                 initial={{ opacity: 0, padding: 0 }}
                 animate={{ opacity: 1, padding: 24 }}
@@ -88,8 +95,8 @@ export default function PhotoGalleryButton({
                 </div>
 
                 <div className="flex flex-col gap-5">
-                  {/* Camera option */}
                   <button
+                    type="button"
                     onClick={() => camRef.current?.click()}
                     className="w-full flex items-center gap-4 rounded-2xl bg-neutral-700 px-4 py-4"
                   >
@@ -98,12 +105,14 @@ export default function PhotoGalleryButton({
                     </div>
                     <div className="text-left">
                       <div className="font-medium">Camera</div>
-                      <div className="text-neutral-300 text-sm">Take a photo to search</div>
+                      <div className="text-neutral-300 text-sm">
+                        Take a photo to search
+                      </div>
                     </div>
                   </button>
 
-                  {/* Photo Library option */}
                   <button
+                    type="button"
                     onClick={() => libRef.current?.click()}
                     className="w-full flex items-center gap-4 rounded-2xl bg-neutral-700 px-4 py-4"
                   >
@@ -112,7 +121,9 @@ export default function PhotoGalleryButton({
                     </div>
                     <div className="text-left">
                       <div className="font-medium">Photo Library</div>
-                      <div className="text-neutral-300 text-sm">Choose from your photos</div>
+                      <div className="text-neutral-300 text-sm">
+                        Choose from your photos
+                      </div>
                     </div>
                   </button>
                 </div>
