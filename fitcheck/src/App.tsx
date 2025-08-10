@@ -37,8 +37,6 @@ function AppRoutes() {
         <Route path="/" element={<Welcome />} />
         <Route path="/home" element={<Home />} />
         <Route path="/saved" element={<Saved />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/tryon" element={<TryOn />} />
         <Route path="/yourfit" element={<YourFit />} />
         <Route path="/tryon/result" element={<TryonResult />} />
       </Routes>
