@@ -19,6 +19,7 @@
   "dependencies": {
     "@fal-ai/client": "^1.6.2",
     "@shopify/shop-minis-react": "0.0.30",
+    "framer-motion": "^12.23.12",
     "lucide-react": "^0.539.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
