@@ -16,7 +16,6 @@ export default function TryOn() {
 
   return (
     <div className="min-h-screen w-full grid place-items-center">
-      {/* Phone frame (375x812 like iPhone 14 logical points) */}
       <div className="h-fill w-fill overflow-hidden rounded-[40px] shadow-2xl ">
         {/* Background image */}
         <img
@@ -28,14 +27,14 @@ export default function TryOn() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
 
         <div
-          className={`absolute bottom-55 right-6 left-6 text-white z-10
+          className={`absolute bottom-40 right-6 left-6 text-white z-10
               transition-transform duration-300 ease-out
               ${sheetOpen ? "-translate-y-50" : ""}`}
         >
           <h1 className="text-4xl font-extrabold tracking-tight drop-shadow">
             FitCheck
           </h1>
-          <p className="mt-2 text-white/85 leading-snug">
+          <p className="mt-2 text-white/85 ">
             AI-powered style picks for every special moment.
           </p>
         </div>

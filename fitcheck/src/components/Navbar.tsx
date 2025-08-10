@@ -1,11 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { Camera, Star, Flame, Home, Plus } from "lucide-react";
+import { Star, Home } from "lucide-react";
 import PhotoGalleryButton from "../components/GalleryButton";
-
 
 export default function NavBar() {
   const { pathname } = useLocation();
-  
 
   return (
     <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center bg-transparent rounded-full px-6 py-2">

@@ -34,41 +34,65 @@ export default function TryonResult() {
           return;
         }
 
-        // Garment image from first selected product
-        const garmentImageUrl = selectedProducts[0]?.images?.[0]?.url;
-        if (!garmentImageUrl) {
-          setError("No product images available");
-          setLoading(false);
-          return;
-        }
+        // Extract garment image URL (first product's main image)
+        const garmentImageUrl =
+          "https://plus.unsplash.com/premium_photo-1673758905770-a62f4309c43c?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D";
 
-        // Model image — replace with uploaded image or placeholder
         const modelImageUrl =
           "https://storage.googleapis.com/falserverless/example_inputs/model.png";
 
-        // Configure fal client (API key from env var)
-        fal.config({
-          credentials: process.env.REACT_APP_FAL_KEY || "<YOUR_FAL_KEY>"
-        });
-
-        // Subscribe to try-on generation
-        const result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
-          input: {
-            model_image: modelImageUrl,
-            garment_image: garmentImageUrl
+        // Step 1: Run the try-on model
+        const runRes = await fetch("https://api.fashn.ai/v1/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.REACT_APP_FASHN_API_KEY}`,
           },
-          logs: true,
-          onQueueUpdate: (update) => {
-            console.log("Queue update:", update.status);
-          }
+          body: JSON.stringify({
+            model_name: "tryon-v1.6",
+            inputs: {
+              model_image: modelImageUrl,
+              garment_image: garmentImageUrl,
+            },
+          }),
         });
 
-        if (result.data?.images?.length) {
-          setResultImage(result.data.images[0].url);
-        } else {
-          setError("No result image returned.");
+        if (!runRes.ok) {
+          throw new Error(`Run request failed: ${runRes.status}`);
         }
 
+        const { id } = await runRes.json();
+
+        // Step 2: Poll for the result
+        let status = "";
+        while (status !== "completed") {
+          const statusRes = await fetch(
+            `https://api.fashn.ai/v1/status/${id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.REACT_APP_FASHN_API_KEY}`,
+              },
+            }
+          );
+          if (!statusRes.ok)
+            throw new Error(`Status check failed: ${statusRes.status}`);
+
+          const statusData = await statusRes.json();
+          status = statusData.status;
+
+          if (status === "completed") {
+            setResultImage(statusData.output[0]); // result image URL
+            setLoading(false);
+            break;
+          } else if (status === "failed") {
+            setError("Try-on generation failed.");
+            setLoading(false);
+            break;
+          }
+
+          // Wait before polling again
+          await new Promise((r) => setTimeout(r, 2000));
+        }
       } catch (err) {
         console.error("Error processing images:", err);
         setError("Failed to process images. Please try again.");
@@ -131,6 +155,7 @@ export default function TryonResult() {
                 />
               </div>
             )}
+
             <div className="flex justify-center gap-4 mt-6">
               <Link
                 to="/tryon/yourfit"
