@@ -1,6 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
+<<<<<<< HEAD
   "description": "",
   "main": "index.js",
   "dependencies": {
@@ -95,4 +96,21 @@
   "keywords": [],
   "author": "",
   "license": "ISC"
+=======
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@fal-ai/client": "^1.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
+  }
+>>>>>>> 8260211018b3d0e86a1d92ac05f48c6cfca59e52
 }

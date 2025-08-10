@@ -27,7 +27,7 @@ export default function TryOn() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
 
         <div
-          className={`absolute bottom-40 right-6 left-6 text-white z-10
+          className={`absolute bottom-30 right-6 left-6 text-white z-10
               transition-transform duration-300 ease-out
               ${sheetOpen ? "-translate-y-50" : ""}`}
         >

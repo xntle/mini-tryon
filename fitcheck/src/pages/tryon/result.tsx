@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useSavedProducts, useProductMedia } from "@shopify/shop-minis-react";
@@ -175,6 +176,42 @@ export default function TryOnResult() {
     console.warn("Could not find images in the result structure");
     return [];
   })();
+=======
+// TryOnButton.tsx
+import { useState } from "react";
+
+export function TryOnButton() {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run() {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch("http://localhost:3000/api/tryon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          // or pass your own URLs from user input
+          // model_image, garment_image
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Request failed");
+      setResult(data);
+    } catch (e: any) {
+      setError(e.message || "Failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Helper to display common shapes
+  const images: string[] =
+    (Array.isArray(result?.images) && result.images) ||
+    (result?.image ? [result.image] : []);
+>>>>>>> 8260211018b3d0e86a1d92ac05f48c6cfca59e52
 
   return (
     <div>

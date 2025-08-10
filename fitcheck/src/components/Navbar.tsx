@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Star, Home } from "lucide-react";
+import { GalleryHorizontalEnd, Home } from "lucide-react";
 import PhotoGalleryButton from "../components/GalleryButton";
 
 export default function NavBar() {
@@ -12,7 +12,7 @@ export default function NavBar() {
         <Link
           to="/home"
           className={`flex flex-col items-center text-xs ${
-            pathname === "/home" ? "text-blue-600" : "text-gray-500"
+            pathname === "/home" ? "text-blue-600" : "text-white"
           }`}
         >
           <Home className="h-5 w-5 mb-1" />
@@ -25,10 +25,10 @@ export default function NavBar() {
         <Link
           to="/saved"
           className={`flex flex-col items-center text-xs ${
-            pathname === "/saved" ? "text-blue-600" : "text-gray-500"
+            pathname === "/saved" ? "text-blue-600" : "text-white"
           }`}
         >
-          <Star className="h-5 w-5 mb-1" />
+          <GalleryHorizontalEnd className="h-5 w-5 mb-1" />
         </Link>
       </div>
     </nav>
