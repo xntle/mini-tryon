@@ -3,63 +3,148 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Responsive Rotating Grid Loader</title>
+<title>Responsive Full-Window Grid Loader</title>
 <style>
   html, body {
     margin: 0;
+    padding: 0;
     height: 100%;
+    width: 100%;
     background: #111;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    overflow: hidden; /* Prevent scrollbars */
   }
 
   #grid {
     display: grid;
-    width: 90vmin;
-    height: 90vmin; /* Make grid square and responsive */
-    gap: 1vmin;
-    /* Will set grid-template-columns/rows dynamically */
+    width: 100vw;     /* Full viewport width */
+    height: 100vh;    /* Full viewport height */
+    gap: 1vmin;       /* Responsive gap size */
+    position: fixed;  /* Cover the entire viewport */
+    top: 0;
+    left: 0;
+    /* Grid template will be set dynamically */
   }
 
   .cell {
     background: #444;
     border-radius: 6px;
-    aspect-ratio: 1 / 1; /* Keep squares */
-    transition: transform 0.5s ease, background-color 0.5s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cell::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    background: #222;
+    border-radius: 4px;
   }
 
   .rotating {
-    transform: rotate(360deg);
-    background: #00ff99;
+    animation: rotate 1s ease-out forwards;
+  }
+
+  .rotating::after {
+    animation: pulse 1s ease-out forwards;
+  }
+
+  @keyframes rotate {
+    0% { transform: rotate(0deg) scale(0.9); }
+    50% { transform: rotate(180deg) scale(1); }
+    100% { transform: rotate(360deg) scale(0.9); }
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(0.7); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.7; }
+  }
+
+  /* Optional: Add a status message in the center */
+  #status {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-family: system-ui, sans-serif;
+    font-size: 1.5rem;
+    text-align: center;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+  }
+
+  .dots::after {
+    content: '';
+    animation: dots 1.5s infinite;
+  }
+
+  @keyframes dots {
+    0% { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
   }
 </style>
 </head>
 <body>
 
 <div id="grid"></div>
+<div id="status" class="dots">Creating your look</div>
 
 <script>
   const grid = document.getElementById('grid');
+  const status = document.getElementById('status');
 
   function createGrid() {
     // Clear any existing cells
     grid.innerHTML = '';
 
-    // Calculate number of columns/rows based on grid width and minimum cell size
-    const gridSize = grid.clientWidth; // since width === height
-    const minCellSize = 40; // px minimum size per cell
+    // Calculate number of columns and rows independently to cover the whole window
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // Define a target cell size range (not too small, not too large)
+    const minCellSize = 40; // px
+    const maxCellSize = 80; // px
+    
+    // Get the current gap size
     const gap = parseFloat(getComputedStyle(grid).gap);
+    
+    // Calculate number of columns and rows based on window dimensions
+    // Aim for cells that are within our target size range
+    let cols = Math.floor(windowWidth / (minCellSize + gap));
+    let rows = Math.floor(windowHeight / (minCellSize + gap));
+    
+    // Ensure we don't create too many cells (for performance)
+    const maxCells = 1000; // Maximum number of cells for performance
+    
+    // If we would create too many cells, adjust the dimensions
+    if (rows * cols > maxCells) {
+      // Calculate the ratio to maintain
+      const ratio = windowWidth / windowHeight;
+      // Find values that multiply to maxCells and approximately maintain the ratio
+      const idealRows = Math.sqrt(maxCells / ratio);
+      const idealCols = maxCells / idealRows;
+      
+      rows = Math.floor(idealRows);
+      cols = Math.floor(idealCols);
+    }
+    
+    // Calculate actual cell size after grid division
+    const cellWidth = (windowWidth - (cols - 1) * gap) / cols;
+    const cellHeight = (windowHeight - (rows - 1) * gap) / rows;
+    
+    console.log(`Creating grid: ${rows}x${cols} (${rows*cols} cells)`);
+    console.log(`Cell size: ${cellWidth.toFixed(1)}x${cellHeight.toFixed(1)}px`);
 
-    const cols = Math.floor(gridSize / (minCellSize + gap));
-    const rows = cols; // square grid
-
-    // Set grid template dynamically
+    // Set grid template
     grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
+    // Create cells
     const totalCells = cols * rows;
-
     for (let i = 0; i < totalCells; i++) {
       const cell = document.createElement('div');
       cell.classList.add('cell');
@@ -67,17 +152,19 @@
     }
   }
 
-  createGrid();
-
+  // Track which cells are currently animating
   let rotatingIndexes = new Set();
 
   function rotateRandomCells() {
     const cells = grid.children;
     const totalCells = cells.length;
+    
+    // Dynamically calculate how many cells to animate based on grid density
+    const cellsToAnimate = Math.max(3, Math.floor(totalCells / 50));
     let newRotations = [];
 
-    // Pick 3 random cells that are not already rotating
-    while (newRotations.length < 3 && newRotations.length < totalCells) {
+    // Pick random cells that are not already rotating
+    while (newRotations.length < cellsToAnimate && newRotations.length < totalCells - rotatingIndexes.size) {
       const idx = Math.floor(Math.random() * totalCells);
       if (!rotatingIndexes.has(idx)) {
         rotatingIndexes.add(idx);
@@ -85,24 +172,47 @@
       }
     }
 
+    // Add rotating class to cells
     newRotations.forEach((index) => {
       const cell = cells[index];
       cell.classList.add('rotating');
 
-      // Remove rotating after animation duration
+      // Remove rotating class after animation completes
       setTimeout(() => {
         cell.classList.remove('rotating');
         rotatingIndexes.delete(index);
-      }, 500);
+      }, 1000); // Match this to your animation duration
     });
   }
 
-  setInterval(rotateRandomCells, 400);
+  // Create initial grid
+  createGrid();
+  
+  // Start animations
+  setInterval(rotateRandomCells, 100);
 
-  // Recreate grid on resize
+  // Recreate grid on resize with debouncing
+  let resizeTimeout;
   window.addEventListener('resize', () => {
-    createGrid();
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      createGrid();
+    }, 250);
   });
+  
+  // Optional: Update status message periodically
+  const loadingStates = [
+    "Creating your look",
+    "Processing image",
+    "Applying AI models",
+    "Almost done"
+  ];
+  
+  let stateIndex = 0;
+  setInterval(() => {
+    stateIndex = (stateIndex + 1) % loadingStates.length;
+    status.textContent = loadingStates[stateIndex];
+  }, 3000);
 </script>
 
 </body>
