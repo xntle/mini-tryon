@@ -14,10 +14,11 @@ import Shop from "./pages/tryon/shop";
 import YourFit from "./pages/tryon/yourfit";
 import TryOn from "./pages/tryon";
 import TryonResult from "./pages/tryon/result";
+import TryOnLoading from "./pages/tryon/loading";
 
 function AppRoutes() {
   const location = useLocation();
-  const hideNavOn = ["/yourfit"];
+  const hideNavOn = ["/yourfit", "/tryon/loading"];
 
   return (
     <>
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="/yourfit" element={<YourFit />} />
         <Route path="/tryon" element={<TryOn />} />
         <Route path="/tryon/result" element={<TryonResult />} />
+        <Route path="/tryon/loading" element={<TryOnLoading />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/preferences" element={<Preferences />} />
       </Routes>

@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link, Navigate } from "react-router-dom";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
+import PreferencesCarousel from "../../components/PreferencesCarousel";
 
-type LocationState = { productIds?: string[] };
+type LocationState = { 
+  productIds?: string[];
+  photo?: string;
+};
 
 export default function TryonResult() {
   const location = useLocation();
@@ -10,9 +14,25 @@ export default function TryonResult() {
   const [loading, setLoading] = useState(true);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCarouselProducts, setSelectedCarouselProducts] = useState<string[]>([]);
 
   const productIds =
     (location.state as LocationState | undefined)?.productIds ?? [];
+  const photo = (location.state as LocationState | undefined)?.photo;
+
+  // Get user preferences from localStorage
+  const userPreferences = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('userPreferences') || '{}');
+    } catch {
+      return {
+        occasion: ['Date Night'],
+        vibe: ['Elegant & Classy'],
+        colorSeason: ['True Winter'],
+        budget: ['$100-250']
+      };
+    }
+  })();
 
   // If user got here without selecting anything, bounce them back
   if (!productIds.length) return <Navigate to="/select" replace />;
@@ -128,9 +148,64 @@ export default function TryonResult() {
 
       <div className="flex flex-col items-center justify-center">
         {loading ? (
-          <div className="py-12 flex flex-col items-center">
-            <div className="mb-4 w-12 h-12 border-4 border-t-black border-gray-200 rounded-full animate-spin"></div>
-            <p className="text-gray-600">Creating your look...</p>
+          <div className="w-full">
+            {/* Beautiful Loading with Preferences Carousel */}
+            <div className="text-center mb-8">
+              <div className="relative inline-block mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center mx-auto">
+                  <svg className="w-8 h-8 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Creating Your Perfect Fit</h2>
+              <p className="text-gray-600 mb-6">Our AI is analyzing your photo and matching clothes...</p>
+              
+              {/* Progress bar */}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-8">
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full animate-pulse" style={{width: '65%'}}></div>
+              </div>
+            </div>
+
+            {/* Preferences Carousel */}
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <PreferencesCarousel 
+                selectedPreferences={userPreferences}
+                onProductSelect={(productId) => {
+                  setSelectedCarouselProducts(prev => 
+                    prev.includes(productId) 
+                      ? prev.filter(id => id !== productId)
+                      : [...prev, productId]
+                  );
+                }}
+              />
+              
+              {/* Show selected items from carousel */}
+              {selectedCarouselProducts.length > 0 && (
+                <div className="mt-6 text-center">
+                  <div className="inline-flex items-center bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zM8 6V6a2 2 0 114 0v1H8V6z" clipRule="evenodd" />
+                    </svg>
+                    {selectedCarouselProducts.length} item{selectedCarouselProducts.length !== 1 ? 's' : ''} added for next try-on
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Fun loading message */}
+            <div className="mt-6 text-center">
+              <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-4">
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Did you know?</span> Our AI analyzes over 200 body measurements to ensure the perfect fit!
+                </p>
+              </div>
+            </div>
           </div>
         ) : error ? (
           <div className="py-8 text-center">

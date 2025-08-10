@@ -115,7 +115,13 @@ export default function Preferences() {
       <div className="mt-12 mb-8">
         <button 
           onClick={() => {
-            // Here you would typically save the preferences
+            // Save preferences to localStorage for use in try-on flow
+            localStorage.setItem('userPreferences', JSON.stringify({
+              occasion: selections["Occasion"] || [],
+              vibe: selections["Vibe"] || [],
+              colorSeason: selections["Color Season"] || [],
+              budget: selections["Budget"] || []
+            }));
             console.log('Saving preferences:', selections);
             navigate('/home');
           }}
