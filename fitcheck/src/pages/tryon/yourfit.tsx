@@ -71,7 +71,7 @@ export default function YourFit() {
             Ready to preview your look?
           </div>
           <Link
-            to="/tryon" // or a dedicated /tryon/canvas route
+            to="/tryon/result" // or a dedicated /tryon/canvas route
             state={{ productIds }}
             className="px-4 py-2 rounded-lg bg-black text-white font-medium"
           >

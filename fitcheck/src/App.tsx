@@ -12,6 +12,8 @@ import NavBar from "./components/Navbar";
 import Shop from "./pages/tryon/shop";
 import YourFit from "./pages/tryon/yourfit";
 import TryOn from "./pages/tryon";
+import TryonResult from "./pages/tryon/result";
+
 function AppRoutes() {
   const location = useLocation();
   const hideNavOn = ["/tryon", "/yourfit"];
@@ -38,6 +40,7 @@ function AppRoutes() {
         <Route path="/shop" element={<Shop />} />
         <Route path="/tryon" element={<TryOn />} />
         <Route path="/yourfit" element={<YourFit />} />
+        <Route path="/tryon/result" element={<TryonResult />} />
       </Routes>
 
       {!hideNavOn.includes(location.pathname) && <NavBar />}
