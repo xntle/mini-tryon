@@ -39,15 +39,10 @@ export default function PhotoGalleryButton({
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
-      // go straight to /shop with photo in state
-      navigate("/shop", { state: { photo: dataUrl } });
-    };
+    reader.onload = () =>
+      navigate("/preferences", { state: { photo: String(reader.result) } });
     reader.readAsDataURL(file);
-
     e.target.value = "";
     applyOpen(false);
   }
@@ -61,7 +56,7 @@ export default function PhotoGalleryButton({
             layoutId="fab"
             onClick={() => applyOpen(true)}
             aria-label="Open image search"
-            className="inline-grid place-items-center h-14 w-14 rounded-full bg-neutral-900 text-white shadow-xl active:scale-95"
+            className="inline-grid place-items-center h-14 w-14 rounded-full  bg-black/10 backdrop-blur-md backdrop-saturate-150 text-white shadow-xl active:scale-95"
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
           >
             <Plus className="h-6 w-6" />
@@ -74,7 +69,12 @@ export default function PhotoGalleryButton({
             <motion.div
               layoutId="fab"
               initial={false}
-              className="pointer-events-auto absolute bottom-2 left-1/2 -translate-x-1/2 w-[92vw] max-w-[520px] rounded-3xl bg-black text-white shadow-2xl"
+              className="
+                pointer-events-auto absolute bottom-2 left-1/2 -translate-x-1/2
+                w-[92vw] max-w-[520px] rounded-3xl
+                bg-black/10 backdrop-blur-md backdrop-saturate-150
+                border border-white/30 shadow-2xl text-white
+              "
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <motion.div
@@ -88,7 +88,7 @@ export default function PhotoGalleryButton({
                   <button
                     onClick={() => applyOpen(false)}
                     aria-label="Close"
-                    className="p-2 -m-2 rounded-full hover:bg-white/10"
+                    className="p-2 -m-2 rounded-full hover:bg-black/15"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -98,14 +98,19 @@ export default function PhotoGalleryButton({
                   <button
                     type="button"
                     onClick={() => camRef.current?.click()}
-                    className="w-full flex items-center gap-4 rounded-2xl bg-neutral-700 px-4 py-4"
+                    className="
+                      w-full flex items-center gap-4 rounded-2xl
+                      bg-black/10 hover:bg-black/15
+                      border border-white/20
+                      px-4 py-4 transition-colors
+                    "
                   >
-                    <div className="h-10 w-10 grid place-items-center rounded-full bg-neutral-800">
+                    <div className="h-10 w-10 grid place-items-center rounded-full bg-black/15">
                       <CameraIcon className="h-5 w-5" />
                     </div>
                     <div className="text-left">
                       <div className="font-medium">Camera</div>
-                      <div className="text-neutral-300 text-sm">
+                      <div className="text-white/70 text-sm">
                         Take a photo to search
                       </div>
                     </div>
@@ -114,14 +119,19 @@ export default function PhotoGalleryButton({
                   <button
                     type="button"
                     onClick={() => libRef.current?.click()}
-                    className="w-full flex items-center gap-4 rounded-2xl bg-neutral-700 px-4 py-4"
+                    className="
+                      w-full flex items-center gap-4 rounded-2xl
+                      bg-black/10 hover:bg-black/15
+                      border border-white/20
+                      px-4 py-4 transition-colors
+                    "
                   >
-                    <div className="h-10 w-10 grid place-items-center rounded-full bg-neutral-800">
+                    <div className="h-10 w-10 grid place-items-center rounded-full bg-black/15">
                       <ImageIcon className="h-5 w-5" />
                     </div>
                     <div className="text-left">
                       <div className="font-medium">Photo Library</div>
-                      <div className="text-neutral-300 text-sm">
+                      <div className="text-white/70 text-sm">
                         Choose from your photos
                       </div>
                     </div>
