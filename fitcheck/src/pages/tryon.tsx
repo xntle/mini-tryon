@@ -1,5 +1,7 @@
 import React from "react";
 import { X, ShoppingCart, Home, Plus, Sparkles } from "lucide-react";
+import NavBar from "../components/Navbar";
+
 
 export default function TryOn() {
   return (
@@ -50,25 +52,10 @@ export default function TryOn() {
   </p>
 </div>
 
-<div className="absolute bottom-10 left-0 right-0 bg-black/85 backdrop-blur px-6 pt-3 pb-6 text-white z-20">
-  <div className="flex items-center justify-between">
-    <button className="p-2 active:scale-95 transition" aria-label="Close">
-      <X className="h-6 w-6" />
-    </button>
-    <button className="p-2 active:scale-95 transition" aria-label="Cart">
-      <ShoppingCart className="h-6 w-6" />
-    </button>
-    <button className="p-2 active:scale-95 transition" aria-label="More">
-      <div className="h-6 w-6 flex items-center justify-center">
-        <span className="text-xl">...</span>
-      </div>
-      </button>
-  </div>
 
   <div className="mt-3 flex justify-center">
     <div className="h-1 w-24 rounded-full bg-white/40" />
   </div>
-</div>
 </div>
 </div>
 );
