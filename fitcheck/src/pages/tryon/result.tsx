@@ -24,56 +24,79 @@ export default function TryonResult() {
     async function processImages() {
       try {
         setLoading(true);
-        
+  
         if (!selectedProducts.length) {
           setError("No products found");
           setLoading(false);
           return;
         }
-        
-        // Get image URLs from products
-        const imageUrls = selectedProducts.map(product => product.images?.[0]?.url).filter(Boolean);
-        
-        if (!imageUrls.length) {
+  
+        // Extract garment image URL (first product's main image)
+        const garmentImageUrl = selectedProducts[0]?.images?.[0]?.url;
+        if (!garmentImageUrl) {
           setError("No product images available");
           setLoading(false);
           return;
         }
-        
-        // For now, we'll just simulate the API call and set loading to false
-        // You can uncomment the actual API call when ready
-        
-        setTimeout(() => {
-          setLoading(false);
-          // For now, let's not set a result image
-          // setResultImage("https://placeholder-image.com/tryon-result");
-        }, 2000);
-        
-        /* Actual API call (uncomment when ready)
-        const response = await fetch("https://your-fal-model-endpoint.com/tryon", {
+  
+        const modelImageUrl = "https://storage.googleapis.com/falserverless/example_inputs/model.png";
+  
+        // Step 1: Run the try-on model
+        const runRes = await fetch("https://api.fashn.ai/v1/run", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.REACT_APP_FASHN_API_KEY}`
           },
           body: JSON.stringify({
-            images: imageUrls,
-          }),
+            model_name: "tryon-v1.6",
+            inputs: {
+              model_image: modelImageUrl,
+              garment_image: garmentImageUrl
+            }
+          })
         });
-        
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
+  
+        if (!runRes.ok) {
+          throw new Error(`Run request failed: ${runRes.status}`);
         }
-        
-        const data = await response.json();
-        setResultImage(data.resultImageUrl);
-        */
+  
+        const { id } = await runRes.json();
+  
+        // Step 2: Poll for the result
+        let status = "";
+        while (status !== "completed") {
+          const statusRes = await fetch(`https://api.fashn.ai/v1/status/${id}`, {
+            headers: {
+              "Authorization": `Bearer ${process.env.REACT_APP_FASHN_API_KEY}`
+            }
+          });
+          if (!statusRes.ok) throw new Error(`Status check failed: ${statusRes.status}`);
+  
+          const statusData = await statusRes.json();
+          status = statusData.status;
+  
+          if (status === "completed") {
+            setResultImage(statusData.output[0]); // result image URL
+            setLoading(false);
+            break;
+          } else if (status === "failed") {
+            setError("Try-on generation failed.");
+            setLoading(false);
+            break;
+          }
+  
+          // Wait before polling again
+          await new Promise(r => setTimeout(r, 2000));
+        }
+  
       } catch (err) {
         console.error("Error processing images:", err);
         setError("Failed to process images. Please try again.");
         setLoading(false);
       }
     }
-    
+  
     processImages();
   }, [productIds, saved]);
   
