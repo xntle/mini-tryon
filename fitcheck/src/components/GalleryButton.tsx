@@ -1,5 +1,10 @@
 import React, { useRef, useState } from "react";
-import { Plus, Camera as CameraIcon, Image as ImageIcon, X } from "lucide-react";
+import {
+  Plus,
+  Camera as CameraIcon,
+  Image as ImageIcon,
+  X,
+} from "lucide-react";
 
 export type PhotoGalleryButtonProps = {
   open?: boolean;
@@ -22,7 +27,6 @@ export default function PhotoGalleryButton({
   const emit = (v: boolean) =>
     window.dispatchEvent(new CustomEvent("fc:sheet", { detail: v }));
 
-  
   const applyOpen = (v: boolean) => {
     setShow(v);
     emit(v);
@@ -42,8 +46,8 @@ export default function PhotoGalleryButton({
     };
     reader.readAsDataURL(file);
 
-    e.target.value = "";          // reset
-    applyOpen(false);             // ✅ close sheet + emit fc:sheet:false
+    e.target.value = "";
+    applyOpen(false);
   }
 
   return (
@@ -52,7 +56,7 @@ export default function PhotoGalleryButton({
       <button
         onClick={() => applyOpen(true)}
         aria-label="Open image search"
-        className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-violet-600 text-white shadow-xl active:scale-95 transition"
+        className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-black text-white shadow-xl active:scale-95 transition"
       >
         <Plus className="h-6 w-6" />
       </button>
@@ -83,7 +87,9 @@ export default function PhotoGalleryButton({
                 </div>
                 <div className="text-left">
                   <div className="font-medium">Camera</div>
-                  <div className="text-neutral-300 text-sm">Take a photo to search</div>
+                  <div className="text-neutral-300 text-sm">
+                    Take a photo to search
+                  </div>
                 </div>
               </button>
 
@@ -97,7 +103,9 @@ export default function PhotoGalleryButton({
                 </div>
                 <div className="text-left">
                   <div className="font-medium">Photo Library</div>
-                  <div className="text-neutral-300 text-sm">Choose from your photos</div>
+                  <div className="text-neutral-300 text-sm">
+                    Choose from your photos
+                  </div>
                 </div>
               </button>
             </div>

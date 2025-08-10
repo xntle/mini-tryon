@@ -11,7 +11,7 @@ import Home from "./pages/home";
 import NavBar from "./components/Navbar";
 import Shop from "./pages/tryon/shop";
 import YourFit from "./pages/tryon/yourfit";
-
+import TryOn from "./pages/tryon";
 function AppRoutes() {
   const location = useLocation();
   const hideNavOn = ["/tryon", "/yourfit"];
@@ -35,7 +35,8 @@ function AppRoutes() {
         <Route path="/" element={<Welcome />} />
         <Route path="/home" element={<Home />} />
         <Route path="/saved" element={<Saved />} />
-        <Route path="/tryon" element={<Shop />} />
+        <Route path="/shop" element={<Shop />} />
+        <Route path="/tryon" element={<TryOn />} />
         <Route path="/yourfit" element={<YourFit />} />
       </Routes>
 
