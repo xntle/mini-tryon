@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, Link, Navigate } from "react-router-dom";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
+import { fal } from "@fal-ai/client";
 
 type LocationState = { productIds?: string[] };
 
@@ -11,95 +12,74 @@ export default function TryonResult() {
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const productIds = 
+  const productIds =
     (location.state as LocationState | undefined)?.productIds ?? [];
-  
+
   // If user got here without selecting anything, bounce them back
   if (!productIds.length) return <Navigate to="/select" replace />;
 
   // Filter selected products
-  const selectedProducts = (saved ?? []).filter(p => productIds.includes(p.id));
+  const selectedProducts = (saved ?? []).filter((p) =>
+    productIds.includes(p.id)
+  );
 
   useEffect(() => {
     async function processImages() {
       try {
         setLoading(true);
-  
+
         if (!selectedProducts.length) {
           setError("No products found");
           setLoading(false);
           return;
         }
-  
-        // Extract garment image URL (first product's main image)
+
+        // Garment image from first selected product
         const garmentImageUrl = selectedProducts[0]?.images?.[0]?.url;
         if (!garmentImageUrl) {
           setError("No product images available");
           setLoading(false);
           return;
         }
-  
-        const modelImageUrl = "https://storage.googleapis.com/falserverless/example_inputs/model.png";
-  
-        // Step 1: Run the try-on model
-        const runRes = await fetch("https://api.fashn.ai/v1/run", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${process.env.REACT_APP_FASHN_API_KEY}`
-          },
-          body: JSON.stringify({
-            model_name: "tryon-v1.6",
-            inputs: {
-              model_image: modelImageUrl,
-              garment_image: garmentImageUrl
-            }
-          })
+
+        // Model image — replace with uploaded image or placeholder
+        const modelImageUrl =
+          "https://storage.googleapis.com/falserverless/example_inputs/model.png";
+
+        // Configure fal client (API key from env var)
+        fal.config({
+          credentials: process.env.REACT_APP_FAL_KEY || "<YOUR_FAL_KEY>"
         });
-  
-        if (!runRes.ok) {
-          throw new Error(`Run request failed: ${runRes.status}`);
-        }
-  
-        const { id } = await runRes.json();
-  
-        // Step 2: Poll for the result
-        let status = "";
-        while (status !== "completed") {
-          const statusRes = await fetch(`https://api.fashn.ai/v1/status/${id}`, {
-            headers: {
-              "Authorization": `Bearer ${process.env.REACT_APP_FASHN_API_KEY}`
-            }
-          });
-          if (!statusRes.ok) throw new Error(`Status check failed: ${statusRes.status}`);
-  
-          const statusData = await statusRes.json();
-          status = statusData.status;
-  
-          if (status === "completed") {
-            setResultImage(statusData.output[0]); // result image URL
-            setLoading(false);
-            break;
-          } else if (status === "failed") {
-            setError("Try-on generation failed.");
-            setLoading(false);
-            break;
+
+        // Subscribe to try-on generation
+        const result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
+          input: {
+            model_image: modelImageUrl,
+            garment_image: garmentImageUrl
+          },
+          logs: true,
+          onQueueUpdate: (update) => {
+            console.log("Queue update:", update.status);
           }
-  
-          // Wait before polling again
-          await new Promise(r => setTimeout(r, 2000));
+        });
+
+        if (result.data?.images?.length) {
+          setResultImage(result.data.images[0].url);
+        } else {
+          setError("No result image returned.");
         }
-  
+
       } catch (err) {
         console.error("Error processing images:", err);
         setError("Failed to process images. Please try again.");
+      } finally {
         setLoading(false);
       }
     }
-  
+
     processImages();
   }, [productIds, saved]);
-  
+
   return (
     <div className="min-h-dvh pb-16 pt-6 px-4 max-w-xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -108,7 +88,7 @@ export default function TryonResult() {
           Back to selection
         </Link>
       </div>
-      
+
       {/* Display selected products */}
       <div className="mb-6">
         <h2 className="text-lg font-medium mb-3">Selected Items</h2>
@@ -123,7 +103,7 @@ export default function TryonResult() {
           ))}
         </div>
       </div>
-      
+
       <div className="flex flex-col items-center justify-center">
         {loading ? (
           <div className="py-12 flex flex-col items-center">
@@ -144,14 +124,13 @@ export default function TryonResult() {
           <div className="w-full">
             {resultImage && (
               <div className="rounded-xl overflow-hidden mb-6">
-                <img 
-                  src={resultImage} 
-                  alt="Virtual try-on result" 
+                <img
+                  src={resultImage}
+                  alt="Virtual try-on result"
                   className="w-full h-auto"
                 />
               </div>
             )}
-            
             <div className="flex justify-center gap-4 mt-6">
               <Link
                 to="/tryon/yourfit"
@@ -162,7 +141,6 @@ export default function TryonResult() {
               <button
                 className="px-4 py-2 rounded-lg bg-black text-white font-medium"
                 onClick={() => {
-                  // Add share functionality if needed
                   alert("Share functionality would go here");
                 }}
               >
