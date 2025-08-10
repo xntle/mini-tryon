@@ -26,7 +26,7 @@ export function App() {
     </Router>
   );
 }
-//hello
+//hello again
 // export function App() {
 //   const { products } = usePopularProducts();
 
