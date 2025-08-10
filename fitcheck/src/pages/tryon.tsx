@@ -1,6 +1,77 @@
 import React, { useEffect, useState } from "react";
 import NavBar from "../components/Navbar";
 
+// inside TryonResult.tsx
+
+function MakeVideoButton({
+  imageUrl,
+  defaultPrompt = "",
+}: {
+  imageUrl: string;
+  defaultPrompt?: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const prompt =
+    defaultPrompt ||
+    "Slow dolly-in on the subject, subtle head turn and natural breathing.";
+
+  async function run() {
+    try {
+      setLoading(true);
+      setError(null);
+      setVideoUrl(null);
+
+      const res = await fetch("/api/fal-i2v", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_url: imageUrl, // can be data: URI
+          prompt,
+          resolution: "720p",
+          aspect_ratio: "auto",
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.videoUrl)
+        throw new Error(json.error || "No video URL");
+      setVideoUrl(json.videoUrl);
+    } catch (e: any) {
+      setError(e.message || "Failed to create video");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="w-full">
+      <button
+        type="button"
+        className="px-4 py-2 rounded-lg bg-black text-white font-medium disabled:opacity-50"
+        onClick={run}
+        disabled={loading}
+      >
+        {loading ? "Generating…" : "Make Video"}
+      </button>
+
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+      {videoUrl && (
+        <div className="mt-4 rounded-xl overflow-hidden border border-gray-200">
+          <video
+            src={videoUrl}
+            controls
+            playsInline
+            loop
+            className="w-full h-auto"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TryOn() {
   const [sheetOpen, setSheetOpen] = useState(false);
 

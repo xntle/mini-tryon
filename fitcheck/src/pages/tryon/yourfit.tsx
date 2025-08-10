@@ -86,7 +86,7 @@ export default function YourFit() {
               : "Add items to try on, or continue to set up your look."}
           </div>
           <Link
-            to="/tryon/result" // adjust to your actual try-on route
+            to="/tryon/generateVideo" // adjust to your actual try-on route
             state={{ productIds, photo }} // pass both along
             className="px-4 py-2 rounded-lg bg-black text-white font-medium"
           >

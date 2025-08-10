@@ -13,6 +13,7 @@ import Shop from "./pages/tryon/shop";
 import YourFit from "./pages/tryon/yourfit";
 import TryOn from "./pages/tryon";
 import TryonResult from "./pages/tryon/result";
+// import VideoFromImage from "./pages/tryon/generateVideo";
 
 function AppRoutes() {
   const location = useLocation();
@@ -42,6 +43,7 @@ function AppRoutes() {
         <Route path="/tryon" element={<TryOn />} />
         <Route path="/tryon/result" element={<TryonResult />} />
         <Route path="/shop" element={<Shop />} />
+        {/* <Route path="/generateVideo" element={<VideoFromImage />} /> */}
       </Routes>
 
       {!hideNavOn.includes(location.pathname) && <NavBar />}
