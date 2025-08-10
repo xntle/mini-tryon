@@ -1,5 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Camera, Star, Flame, Home, Plus } from "lucide-react";
+import PhotoGalleryButton from "../components/GalleryButton";
+
 
 export default function NavBar() {
   const { pathname } = useLocation();
@@ -17,15 +19,8 @@ export default function NavBar() {
           <Home className="h-5 w-5 mb-1" />
         </Link>
 
-        {/* Middle: Try-On */}
-        <Link
-          to="/tryon"
-          className={`flex flex-col items-center text-xs ${
-            pathname === "/tryon" ? "text-blue-600" : "text-gray-500"
-          }`}
-        >
-          <Plus className="h-5 w-5 mb-1" />
-        </Link>
+        {/* Middle: + (opens gallery) */}
+        <PhotoGalleryButton />
 
         {/* Right: Saved */}
         <Link

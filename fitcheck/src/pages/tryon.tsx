@@ -1,5 +1,4 @@
 import React from "react";
-import { X, ShoppingCart, Home, Plus, Sparkles } from "lucide-react";
 import NavBar from "../components/Navbar";
 
 
