@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Badge } from '@shopify/shop-minis-react';
+import { Badge, useSavedProducts } from '@shopify/shop-minis-react';
 import { useNavigate } from 'react-router-dom';
 
 interface PreferenceSection {
@@ -33,6 +33,7 @@ const preferenceSections: PreferenceSection[] = [
 
 export default function Preferences() {
   const navigate = useNavigate();
+  const { saveProduct } = useSavedProducts();
   const [selections, setSelections] = useState<Record<string, string[]>>({
     "Occasion": ["Wedding/Engagement"],
     "Vibe": [],
@@ -114,18 +115,50 @@ export default function Preferences() {
       {/* Save Button */}
       <div className="mt-12 mb-8">
         <button 
-          onClick={() => {
-            // Persist preferences in the format the search page expects
-            try {
-              localStorage.setItem('userPreferences', JSON.stringify({
-                occasion: selections['Occasion'] || [],
-                vibe: selections['Vibe'] || [],
-                colorSeason: selections['Color Season'] || [],
-                budget: selections['Budget'] || []
-              }));
-            } catch {}
-            console.log('Saving preferences:', selections);
-            // Go straight to the carousel
+          onClick={async () => {
+            // Save preferences to localStorage
+            localStorage.setItem('userPreferences', JSON.stringify({
+              occasion: selections["Occasion"] || [],
+              vibe: selections["Vibe"] || [],
+              colorSeason: selections["Color Season"] || [],
+              budget: selections["Budget"] || []
+            }));
+
+            // Auto-save test products based on preferences for testing
+            const testProducts = [
+              {
+                id: 'test-elegant-dress',
+                title: 'Elegant Black Evening Dress',
+                price: { amount: '180.00', currencyCode: 'USD' },
+                images: [{ url: 'https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop' }],
+                vendor: 'Test Store'
+              },
+              {
+                id: 'test-chic-outfit',
+                title: 'Chic Date Night Dress',
+                price: { amount: '120.00', currencyCode: 'USD' },
+                images: [{ url: 'https://images.pexels.com/photos/994234/pexels-photo-994234.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop' }],
+                vendor: 'Test Store'
+              },
+              {
+                id: 'test-bohemian-dress',
+                title: 'Vintage Bohemian Dress',
+                price: { amount: '95.00', currencyCode: 'USD' },
+                images: [{ url: 'https://images.pexels.com/photos/1536619/pexels-photo-1536619.jpeg?auto=compress&cs=tinysrgb&w=400&h=600&fit=crop' }],
+                vendor: 'Test Store'
+              }
+            ];
+
+            // Save each test product
+            for (const product of testProducts) {
+              try {
+                await saveProduct(product);
+              } catch (error) {
+                console.log('Product save error:', error);
+              }
+            }
+
+            console.log('Saved preferences');
             navigate('/saved-carousel-test');
           }}
           className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 transition-colors"

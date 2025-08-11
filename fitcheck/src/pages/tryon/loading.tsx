@@ -31,10 +31,11 @@ export default function TryOnLoading() {
   const totalDuration = steps.reduce((sum, step) => sum + step.duration, 0);
 
   useEffect(() => {
-    if (!state?.photo) {
-      navigate('/tryon');
-      return;
-    }
+    // Allow testing without photo for now
+    // if (!state?.photo) {
+    //   navigate('/tryon');
+    //   return;
+    // }
 
     let timeElapsed = 0;
     const interval = setInterval(() => {
@@ -56,12 +57,9 @@ export default function TryOnLoading() {
       if (timeElapsed >= totalDuration) {
         clearInterval(interval);
         setTimeout(() => {
-          navigate('/tryon/result', { 
-            state: { 
-              ...state, 
-              productIds: selectedProducts.length > 0 ? selectedProducts : state?.productIds 
-            } 
-          });
+          // For testing, just reload the page to see carousel again
+          console.log('Carousel test completed! Reloading...');
+          window.location.reload();
         }, 500);
       }
     }, 100);

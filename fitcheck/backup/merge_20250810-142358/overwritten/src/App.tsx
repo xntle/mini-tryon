@@ -10,16 +10,16 @@ import Saved from "./pages/saved";
 import Home from "./pages/home";
 import Preferences from "./pages/preferences";
 import SavedCarouselTest from "./pages/saved-carousel-test";
-import PreferencesGreen from "./pages/preferences-green";
 import NavBar from "./components/Navbar";
 import Shop from "./pages/tryon/shop";
 import YourFit from "./pages/tryon/yourfit";
 import TryOn from "./pages/tryon";
 import TryonResult from "./pages/tryon/result";
+import TryOnLoading from "./pages/tryon/loading";
 
 function AppRoutes() {
   const location = useLocation();
-  const hideNavOn = ["/yourfit"];
+  const hideNavOn = ["/yourfit", "/tryon/loading"];
 
   return (
     <>
@@ -29,11 +29,11 @@ function AppRoutes() {
         </Link>
         <Link to="/home" className="mr-4">Home</Link>
         <Link to="/tryon" className="mr-4">Try On</Link>
-        <Link to="/saved-carousel-test" className="mr-4">Carousel Test</Link>
         <Link to="/saved" className="mr-4">Saved</Link>
-        <Link to="/preferences" className="mr-4">Preferences (Full)</Link>
-        <Link to="/preferences-2" className="mr-4">Preferences 2 (Green)</Link>
+        <Link to="/preferences" className="mr-4">Preferences</Link>
         <Link to="/tryon/result" className="mr-4">falai</Link>
+        <Link to="/tryon/loading" className="mr-4">Carousel Test</Link>
+        <Link to="/saved-carousel-test" className="mr-4">Search Test</Link>
       </nav>
 
       <Routes>
@@ -43,9 +43,9 @@ function AppRoutes() {
         <Route path="/yourfit" element={<YourFit />} />
         <Route path="/tryon" element={<TryOn />} />
         <Route path="/tryon/result" element={<TryonResult />} />
+        <Route path="/tryon/loading" element={<TryOnLoading />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/preferences" element={<Preferences />} />
-        <Route path="/preferences-2" element={<PreferencesGreen />} />
         <Route path="/saved-carousel-test" element={<SavedCarouselTest />} />
       </Routes>
 
