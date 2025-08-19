@@ -1,0 +1,5 @@
+# This folder is for local documentation only
+# Do not commit to git
+
+*
+!.gitignore
