@@ -1,65 +1,75 @@
 // TryOnButton.tsx
 import { useState } from "react";
+import { getSavedModelUrl, uploadToFal, isHttpUrl } from "./helpers"; // adjust path
 
-export function TryOnButton() {
+type Props = {
+  garmentUrl?: string; // product image URL
+  modelUrlOverride?: string; // optional override (skips localStorage)
+};
+
+export function TryOnButton({ garmentUrl, modelUrlOverride }: Props) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [img, setImg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   async function run() {
     setLoading(true);
-    setError(null);
+    setErr(null);
+    setImg(null);
+
     try {
-      const r = await fetch("http://localhost:3000/api/tryon", {
+      // 1) get model (override > saved)
+      let model = modelUrlOverride ?? getSavedModelUrl();
+      if (!model)
+        throw new Error("No model photo found. Add a full body photo first.");
+
+      // 2) ensure HTTPS (upload if dataURL)
+      const modelHttps = await uploadToFal(model);
+
+      // 3) call try-on (garment can be https url or undefined to use server default)
+      const r = await fetch("/api/tryon", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // or pass your own URLs from user input
-          // model_image, garment_image
+          model_image: modelHttps,
+          garment_image:
+            garmentUrl && isHttpUrl(garmentUrl) ? garmentUrl : garmentUrl, // if you pass one
         }),
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Request failed");
-      setResult(data);
+      if (!r.ok) throw new Error(data?.error || "Try-on failed");
+
+      const out =
+        data?.url ||
+        data?.image ||
+        (Array.isArray(data?.images) && data.images[0]);
+      if (!out) throw new Error("No image URL returned");
+      setImg(out);
+      // optional: console.log("used inputs", data.used);
     } catch (e: any) {
-      setError(e.message || "Failed");
+      setErr(e.message || "Failed");
     } finally {
       setLoading(false);
     }
   }
-
-  // Helper to display common shapes
-  const images: string[] =
-    (Array.isArray(result?.images) && result.images) ||
-    (result?.image ? [result.image] : []);
 
   return (
     <div>
       <button onClick={run} disabled={loading}>
         {loading ? "Generating…" : "Try On"}
       </button>
-
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-
-      {images.length > 0 ? (
-        <div
+      {err && <p style={{ color: "crimson" }}>{err}</p>}
+      {img && (
+        <img
+          src={img}
+          alt="try-on result"
           style={{
-            display: "grid",
-            gap: 12,
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            width: "100%",
+            maxWidth: 480,
+            borderRadius: 12,
+            marginTop: 12,
           }}
-        >
-          {images.map((src: string, i: number) => (
-            <img
-              key={i}
-              src={src}
-              alt={`try-on ${i}`}
-              style={{ width: "100%", borderRadius: 12 }}
-            />
-          ))}
-        </div>
-      ) : (
-        result && <pre>{JSON.stringify(result, null, 2)}</pre>
+        />
       )}
     </div>
   );

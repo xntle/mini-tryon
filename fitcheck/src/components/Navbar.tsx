@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { GalleryHorizontalEnd, Home } from "lucide-react";
+import { GalleryHorizontalEnd, Home, SquareUserRound } from "lucide-react";
 import PhotoGalleryButton from "../components/GalleryButton";
 
 export default function NavBar() {
@@ -10,25 +10,25 @@ export default function NavBar() {
       <div className="flex items-center justify-between gap-12 px-6 h-16">
         {/* Left: Trending */}
         <Link
-          to="/home"
+          to="/saved"
           className={`flex flex-col items-center text-xs ${
-            pathname === "/home" ? "text-blue-600" : "text-white"
+            pathname === "/saved" ? "text-purple-500" : "text-white"
           }`}
         >
-          <Home className="h-5 w-5 mb-1" />
+          <GalleryHorizontalEnd className="h-5 w-5 mb-1" />
         </Link>
 
         {/* Middle: + (opens gallery) */}
         <PhotoGalleryButton />
 
-        {/* Right: Saved */}
+        {/* Right: You */}
         <Link
-          to="/saved"
+          to="/you"
           className={`flex flex-col items-center text-xs ${
-            pathname === "/saved" ? "text-blue-600" : "text-white"
+            pathname === "/you" ? "text-purple-500" : "text-white"
           }`}
         >
-          <GalleryHorizontalEnd className="h-5 w-5 mb-1" />
+          <SquareUserRound className="h-5 w-5 mb-1" />
         </Link>
       </div>
     </nav>

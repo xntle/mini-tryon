@@ -14,6 +14,21 @@ export type PhotoGalleryButtonProps = {
   onSelected?: (file: File, dataUrl: string) => void;
 };
 
+const STORE_KEY = "fullBodyPhotos";
+const CURRENT_KEY = "fullBodyCurrentUrl";
+
+function getSavedFullBodyUrl(): string | null {
+  try {
+    const cur = localStorage.getItem(CURRENT_KEY);
+    if (cur) return cur;
+    const raw = localStorage.getItem(STORE_KEY);
+    const arr: Array<{ url: string; ts: number }> = raw ? JSON.parse(raw) : [];
+    return arr[0]?.url ?? null; // newest-first if you unshift
+  } catch {
+    return null;
+  }
+}
+
 export default function PhotoGalleryButton({
   open,
   onOpenChange,
@@ -36,12 +51,25 @@ export default function PhotoGalleryButton({
   const camRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
+  function handleFabClick() {
+    const saved = getSavedFullBodyUrl();
+    if (saved) {
+      // jump straight to preferences using the saved full-body photo
+      navigate("/preferences", { state: { photo: saved } });
+      return;
+    }
+    applyOpen(true);
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () =>
-      navigate("/preferences", { state: { photo: String(reader.result) } });
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      if (onSelected) onSelected(file, dataUrl);
+      navigate("/preferences", { state: { photo: dataUrl } });
+    };
     reader.readAsDataURL(file);
     e.target.value = "";
     applyOpen(false);
@@ -54,9 +82,9 @@ export default function PhotoGalleryButton({
           <motion.button
             key="fab"
             layoutId="fab"
-            onClick={() => applyOpen(true)}
+            onClick={handleFabClick}
             aria-label="Open image search"
-            className="inline-grid place-items-center h-14 w-14 rounded-full  bg-black/10 backdrop-blur-md backdrop-saturate-150 text-white shadow-xl active:scale-95"
+            className="inline-grid place-items-center h-14 w-14 rounded-full bg-black/10 backdrop-blur-md backdrop-saturate-150 text-white shadow-xl active:scale-95"
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
           >
             <Plus className="h-6 w-6" />
@@ -84,7 +112,7 @@ export default function PhotoGalleryButton({
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Image Search</h3>
+                  <h3 className="text-lg font-semibold">Snap a pic</h3>
                   <button
                     onClick={() => applyOpen(false)}
                     aria-label="Close"

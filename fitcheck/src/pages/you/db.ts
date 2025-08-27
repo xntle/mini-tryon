@@ -1,0 +1,132 @@
+// db.ts
+export type PhotoRecord = { id: string; createdAt: number; blob: Blob };
+const DB_NAME = "fitcheck-db";
+const DB_VERSION = 1;
+const STORE = "photos";
+const META = "meta";
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(META)) {
+        db.createObjectStore(META);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function tx<T>(
+  mode: IDBTransactionMode,
+  fn: (db: IDBDatabase) => Promise<T>
+) {
+  const db = await openDB();
+  try {
+    return await fn(db);
+  } finally {
+    db.close();
+  }
+}
+
+export async function addPhotoBlob(
+  blob: Blob,
+  createdAt?: number,
+  id?: string
+) {
+  const rec: PhotoRecord = {
+    id: id ?? crypto.randomUUID(),
+    createdAt: createdAt ?? Date.now(),
+    blob,
+  };
+  return tx("readwrite", async (db) => {
+    await new Promise<void>((res, rej) => {
+      const t = db.transaction(STORE, "readwrite");
+      t.objectStore(STORE).put(rec);
+      t.oncomplete = () => res();
+      t.onerror = () => rej(t.error);
+    });
+    return rec.id;
+  });
+}
+
+export async function deletePhoto(id: string) {
+  return tx("readwrite", async (db) => {
+    await new Promise<void>((res, rej) => {
+      const t = db.transaction(STORE, "readwrite");
+      t.objectStore(STORE).delete(id);
+      t.oncomplete = () => res();
+      t.onerror = () => rej(t.error);
+    });
+  });
+}
+
+export async function listPhotos(): Promise<PhotoRecord[]> {
+  return tx("readonly", async (db) => {
+    return await new Promise<PhotoRecord[]>((res, rej) => {
+      const t = db.transaction(STORE, "readonly");
+      const store = t.objectStore(STORE);
+      // getAll is widely supported
+      const r = (store as any).getAll ? (store as any).getAll() : null;
+      if (r) {
+        r.onsuccess = () => res(r.result as PhotoRecord[]);
+        r.onerror = () => rej(r.error);
+      } else {
+        // fallback cursor
+        const out: PhotoRecord[] = [];
+        const req = store.openCursor();
+        req.onsuccess = (e: any) => {
+          const cur = e.target.result;
+          if (cur) {
+            out.push(cur.value);
+            cur.continue();
+          } else res(out);
+        };
+        req.onerror = () => rej(req.error);
+      }
+    });
+  });
+}
+
+export async function setCurrentId(id: string | null) {
+  return tx("readwrite", async (db) => {
+    await new Promise<void>((res, rej) => {
+      const t = db.transaction(META, "readwrite");
+      const os = t.objectStore(META);
+      if (id) os.put(id, "currentId");
+      else os.delete("currentId");
+      t.oncomplete = () => res();
+      t.onerror = () => rej(t.error);
+    });
+  });
+}
+
+export async function getCurrentId(): Promise<string | null> {
+  return tx("readonly", async (db) => {
+    return await new Promise<string | null>((res, rej) => {
+      const t = db.transaction(META, "readonly");
+      const os = t.objectStore(META);
+      const r = os.get("currentId");
+      r.onsuccess = () => res((r.result as string) ?? null);
+      r.onerror = () => rej(r.error);
+    });
+  });
+}
+
+/** Optional: request persistent storage to reduce eviction risk */
+export async function requestPersistence(): Promise<boolean> {
+  try {
+    // @ts-ignore
+    const persisted = await navigator.storage?.persisted?.();
+    if (persisted) return true;
+    // @ts-ignore
+    return (await navigator.storage?.persist?.()) ?? false;
+  } catch {
+    return false;
+  }
+}

@@ -4,15 +4,21 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const { fal } = require("@fal-ai/client");
-// const { File } = require("undici"); // Node < 22
+
+// --- File polyfill for Node < 22
+let FileCtor = global.File;
+try {
+  if (!FileCtor) FileCtor = require("undici").File;
+} catch (_) {}
+const File = FileCtor;
 
 if (!process.env.FAL_AI_KEY) throw new Error("Missing FAL_AI_KEY");
 fal.config({ credentials: process.env.FAL_AI_KEY });
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+app.use(express.json({ limit: "16mb" })); // bump a little for data URLs
+app.use(express.urlencoded({ extended: true, limit: "16mb" }));
 
 const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } });
 
@@ -58,6 +64,29 @@ function pluckFirstUrl(input, depth = 0) {
   return null;
 }
 
+// --- helpers to accept data URLs and turn them into HTTPS
+const isHttpUrl = (s) => typeof s === "string" && /^https?:\/\//i.test(s);
+const isDataUrl = (s) => typeof s === "string" && s.startsWith("data:image/");
+
+function fileFromDataUrl(name, dataUrl) {
+  const [meta, b64] = dataUrl.split(",");
+  const m = /data:(.*?);base64/.exec(meta || "");
+  const mime = (m && m[1]) || "application/octet-stream";
+  const buf = Buffer.from(b64 || "", "base64");
+  return new File([buf], name, { type: mime });
+}
+
+async function ensureRemoteUrl(input, tag) {
+  if (!input) return null;
+  if (isHttpUrl(input)) return input;
+  if (isDataUrl(input)) {
+    const file = fileFromDataUrl(`${tag || "upload"}-${Date.now()}.jpg`, input);
+    const url = await fal.storage.upload(file); // returns public HTTPS
+    return url;
+  }
+  return null; // unsupported shapes
+}
+
 // 1) Upload to FAL storage → public HTTPS URL
 app.post("/api/fal-upload", upload.single("file"), async (req, res) => {
   try {
@@ -77,13 +106,22 @@ app.post("/api/fal-upload", upload.single("file"), async (req, res) => {
 // 2) Try-on: accept model_image & garment_image; return { url }
 app.post("/api/tryon", async (req, res) => {
   try {
-    const {
-      model_image = "https://storage.googleapis.com/falserverless/example_inputs/model.png",
-      garment_image = "https://storage.googleapis.com/falserverless/example_inputs/garment.webp",
-    } = req.body || {};
+    let { model_image, garment_image } = req.body || {};
+
+    // defaults if nothing passed
+    if (!model_image)
+      model_image =
+        "https://storage.googleapis.com/falserverless/example_inputs/model.png";
+    if (!garment_image)
+      garment_image =
+        "https://storage.googleapis.com/falserverless/example_inputs/garment.webp";
+
+    // ---> NEW: normalize any data:image/... to HTTPS by uploading
+    const modelUrl = await ensureRemoteUrl(model_image, "model");
+    const garmentUrl = await ensureRemoteUrl(garment_image, "garment");
 
     const sub = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
-      input: { model_image, garment_image },
+      input: { model_image: modelUrl, garment_image: garmentUrl },
       logs: false,
     });
 
@@ -91,9 +129,7 @@ app.post("/api/tryon", async (req, res) => {
       requestId: sub.requestId,
     });
 
-    // Normalize any shape to { url }
     const url = pluckFirstUrl(final?.data) || pluckFirstUrl(final) || null;
-
     if (!url) {
       console.warn(
         "[TRYON] Could not find image URL in:",
@@ -101,8 +137,7 @@ app.post("/api/tryon", async (req, res) => {
       );
       return res.status(502).json({ error: "Upstream returned no image URL" });
     }
-
-    return res.json({ url }); // <--- consistent shape!
+    return res.json({ url });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: String(e?.message || e) });

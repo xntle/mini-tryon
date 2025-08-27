@@ -1,11 +1,14 @@
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import {defineConfig} from 'vite'
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
-  root: '.',
+  root: ".",
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
-    include: ['@shopify/shop-minis-react'],
+    include: ["@shopify/shop-minis-react"],
   },
-})
+  server: {
+    proxy: { "/api": "http://localhost:3000" },
+  },
+});

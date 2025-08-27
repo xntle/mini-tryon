@@ -1,3 +1,4 @@
+import { ChevronLeft } from "lucide-react";
 import React, { useRef, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -107,7 +108,7 @@ export default function Preferences() {
           onClick={() => navigate(-1)}
           className="mr-4 p-2 hover:bg-gray-200 rounded-full transition-colors"
         >
-          <span className="text-2xl">←</span>
+          <ChevronLeft />
         </button>
         <h1 className="text-2xl font-semibold">Preferences</h1>
       </div>
