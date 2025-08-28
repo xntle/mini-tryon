@@ -16,7 +16,7 @@ if (!process.env.FAL_AI_KEY) throw new Error("Missing FAL_AI_KEY");
 fal.config({ credentials: process.env.FAL_AI_KEY });
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: (process.env.FRONTEND_ORIGIN || "*").split(",") }));
 app.use(express.json({ limit: "16mb" })); // bump a little for data URLs
 app.use(express.urlencoded({ extended: true, limit: "16mb" }));
 
@@ -144,4 +144,5 @@ app.post("/api/tryon", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("API on http://localhost:3000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`API listening on ${PORT}`));
