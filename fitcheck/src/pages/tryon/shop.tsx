@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { apiUrl } from "../../lib/api";
 
 type ShopLocationState = {
   photo?: string;
@@ -65,7 +66,10 @@ export default function Shop() {
       "file",
       new File([blob], `model-${Date.now()}.jpg`, { type: blob.type })
     );
-    const up = await fetch("/api/fal-upload", { method: "POST", body: fd });
+    const up = await fetch(apiUrl("/api/fal-upload"), {
+      method: "POST",
+      body: fd,
+    });
     const j = await up.json();
     if (!up.ok) throw new Error(j?.error || "Upload failed");
     return j.url as string;
@@ -153,7 +157,7 @@ export default function Shop() {
       }
       const model_image = await ensureHttpsViaUpload(savedModel);
 
-      const res = await fetch("http://localhost:3000/api/tryon", {
+      const res = await fetch(apiUrl("/api/tryon"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model_image, garment_image }),
