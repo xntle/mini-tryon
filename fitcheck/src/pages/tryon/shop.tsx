@@ -43,45 +43,112 @@ export default function Shop() {
     const occasion = (userPreferences.Occasion?.[0] || 'Wedding/Engagement').toLowerCase();
     const vibe = (userPreferences.Vibe?.[0] || 'Elegant & Classy').toLowerCase();
     
-    // Generate diverse search queries
+    console.log('🎯 Building search queries for:', { gender, occasion, vibe });
+    
+    // Generate MORE DIVERSE search queries
     const queries = [];
     
+    // Query 1: Basic gender-based items
     if (gender === 'women') {
-      queries.push('dress', 'blouse', 'skirt', 'women');
+      queries.push('dress');
+      queries.push('blouse');
+      queries.push('skirt');
     } else if (gender === 'men') {
-      queries.push('shirt', 'pants', 'jacket', 'men');
+      queries.push('shirt');
+      queries.push('pants');
+      queries.push('jacket');
     } else {
-      queries.push('tshirt', 'hoodie', 'jeans', 'unisex');
+      queries.push('tshirt');
+      queries.push('hoodie');
+      queries.push('jeans');
     }
     
+    // Query 2: Occasion-specific
     if (occasion.includes('wedding')) {
-      queries.push('wedding', 'wedding dress', 'bridal');
+      queries.push('wedding dress');
+      queries.push('bridal gown');
+      queries.push('evening dress');
     } else if (occasion.includes('vacation')) {
-      queries.push('vacation', 'travel', 'casual');
+      queries.push('vacation dress');
+      queries.push('travel outfit');
+      queries.push('casual wear');
     } else if (occasion.includes('date')) {
-      queries.push('date night', 'romantic', 'elegant');
+      queries.push('date night dress');
+      queries.push('romantic outfit');
+      queries.push('elegant dress');
     } else if (occasion.includes('concert')) {
-      queries.push('concert', 'music', 'party');
+      queries.push('concert outfit');
+      queries.push('party dress');
+      queries.push('music festival');
     } else if (occasion.includes('formal')) {
-      queries.push('formal', 'suit', 'dress');
+      queries.push('formal dress');
+      queries.push('business suit');
+      queries.push('cocktail dress');
     }
     
+    // Query 3: Vibe-specific
     if (vibe.includes('elegant')) {
-      queries.push('elegant', 'satin', 'silk');
+      queries.push('elegant dress');
+      queries.push('satin dress');
+      queries.push('silk blouse');
     } else if (vibe.includes('soft')) {
-      queries.push('soft', 'gentle', 'pastel');
+      queries.push('soft dress');
+      queries.push('gentle colors');
+      queries.push('pastel dress');
     } else if (vibe.includes('bold')) {
-      queries.push('bold', 'bright', 'vibrant');
+      queries.push('bold dress');
+      queries.push('bright colors');
+      queries.push('vibrant outfit');
     } else if (vibe.includes('minimal')) {
-      queries.push('minimal', 'simple', 'clean');
+      queries.push('minimal dress');
+      queries.push('simple outfit');
+      queries.push('clean design');
     } else if (vibe.includes('chic')) {
-      queries.push('chic', 'stylish', 'fashionable');
+      queries.push('chic dress');
+      queries.push('stylish outfit');
+      queries.push('fashionable dress');
     }
     
-    return [...new Set(queries)].slice(0, 6); // Remove duplicates, limit to 6
+    // Query 4: Color-based (if available)
+    const colorSeason = (userPreferences['Color Season']?.[0] || '').toLowerCase();
+    if (colorSeason.includes('winter')) {
+      queries.push('black dress');
+      queries.push('navy blue');
+    } else if (colorSeason.includes('spring')) {
+      queries.push('pink dress');
+      queries.push('coral dress');
+    } else if (colorSeason.includes('summer')) {
+      queries.push('blue dress');
+      queries.push('lavender dress');
+    } else if (colorSeason.includes('autumn')) {
+      queries.push('brown dress');
+      queries.push('orange dress');
+    }
+    
+    // Query 5: Budget-based
+    const budget = (userPreferences.Budget?.[0] || '').toLowerCase();
+    if (budget.includes('50')) {
+      queries.push('affordable dress');
+      queries.push('budget friendly');
+    } else if (budget.includes('250')) {
+      queries.push('mid range dress');
+      queries.push('quality dress');
+    } else if (budget.includes('500')) {
+      queries.push('luxury dress');
+      queries.push('premium dress');
+    }
+    
+    // Query 6: General fallback
+    queries.push('clothing');
+    
+    const finalQueries = [...new Set(queries)].slice(0, 6);
+    console.log('🔍 Final search queries:', finalQueries);
+    
+    return finalQueries;
   }, [userPreferences]);
 
-  // Run multiple searches for variety
+  // Run multiple searches for variety - add timestamp to force refresh
+  const searchTimestamp = useMemo(() => Date.now(), [userPreferences]);
   const s1 = useProductSearch({ query: searchQueries[0] || '', first: 6 });
   const s2 = useProductSearch({ query: searchQueries[1] || '', first: 6 });
   const s3 = useProductSearch({ query: searchQueries[2] || '', first: 6 });
@@ -98,6 +165,15 @@ export default function Shop() {
     const add = (arr?: any[] | null) => (arr || []).forEach(p => { 
       if (p?.id && !byId.has(p.id)) byId.set(p.id, p); 
     });
+    
+    // Debug: Log each search result
+    console.log('🔍 Search Results:');
+    console.log('S1 (', searchQueries[0], '):', s1.products?.length || 0, 'products');
+    console.log('S2 (', searchQueries[1], '):', s2.products?.length || 0, 'products');
+    console.log('S3 (', searchQueries[2], '):', s3.products?.length || 0, 'products');
+    console.log('S4 (', searchQueries[3], '):', s4.products?.length || 0, 'products');
+    console.log('S5 (', searchQueries[4], '):', s5.products?.length || 0, 'products');
+    console.log('S6 (', searchQueries[5], '):', s6.products?.length || 0, 'products');
     
     // Add all search results first
     add(s1.products); add(s2.products); add(s3.products); 
@@ -121,9 +197,10 @@ export default function Shop() {
       merged = Array.from(byId.values());
     }
     
-    console.log('✅ Found products:', merged.length);
+    console.log('✅ Final merged products:', merged.length);
+    console.log('📦 Product names:', merged.map(p => p?.title || p?.name || 'Unknown').slice(0, 5));
     return merged;
-  }, [s1.products, s2.products, s3.products, s4.products, s5.products, s6.products, recommendedProducts?.products, savedProducts]);
+  }, [s1.products, s2.products, s3.products, s4.products, s5.products, s6.products, recommendedProducts?.products, savedProducts, searchQueries]);
 
   const [lastMeta, setLastMeta] = useState<LookMeta | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
