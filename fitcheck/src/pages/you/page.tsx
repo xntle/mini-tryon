@@ -1,4 +1,3 @@
-// BackstageFullBodyLocal.tsx — dark mode polish + carousel chevrons
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,

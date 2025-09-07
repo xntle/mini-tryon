@@ -20,7 +20,7 @@ export default function TryOnNew() {
         {/* Background image */}
         <img
           src="https://images.unsplash.com/photo-1516826957135-700dedea698c?q=80&w=1600&auto=format&fit=crop"
-          alt="Outfit"
+          alt="Outfiit"
           className="absolute inset-0 h-full w-full object-cover"
         />
 

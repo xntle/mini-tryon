@@ -1,5 +1,9 @@
-import { useState, useRef } from "react";
-import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
+import { useState, useRef, useEffect } from "react";
+import {
+  useSavedProducts,
+  ProductCard,
+  useProductSearch,
+} from "@shopify/shop-minis-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiUrl } from "../../lib/api";
 
@@ -17,8 +21,33 @@ type LookMeta = {
   productUrl?: string; // optional
 };
 
+// ---- DEBUG helpers ----
+const DEBUG =
+  (typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("debug")) ||
+  // @ts-ignore
+  !!(typeof import.meta !== "undefined" && import.meta?.env?.DEV);
+
+function preview(val?: string | null, n = 120) {
+  if (!val) return val as any;
+  if (val.startsWith("data:image/")) return `data:image/... len=${val.length}`;
+  return val.length > n ? val.slice(0, n) + "..." : val;
+}
+function dlog(...args: any[]) {
+  if (DEBUG) console.log("[Shop]", ...args);
+}
+function dgroup(label: string, fn: () => void) {
+  if (!DEBUG) return fn();
+  console.group(label);
+  try {
+    fn();
+  } finally {
+    console.groupEnd();
+  }
+}
+
 export default function Shop() {
-  const { products } = useSavedProducts(); // user's saved products
+  const { products } = useSavedProducts(); // user's saved products (left as-is)
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
 
@@ -33,6 +62,36 @@ export default function Shop() {
   const [inFlightId, setInFlightId] = useState<string | null>(null);
   const [trayDown, setTrayDown] = useState(false);
 
+  // Startup debug
+  useEffect(() => {
+    // @ts-ignore
+    const base = import.meta?.env?.VITE_API_BASE;
+    dgroup("BOOT", () => {
+      dlog("VITE_API_BASE =", base || "(empty; using Vite proxy in dev)");
+      dlog("state.photo =", preview(state?.photo));
+      dlog("state.tryOnUrl =", preview(state?.tryOnUrl));
+    });
+  }, []);
+
+  // ---- SEARCH (recommended items for the carousel) ----
+  const {
+    products: recommended = [],
+    loading: searchLoading,
+    hasNextPage,
+    fetchMore,
+  } = useProductSearch({
+    query: "dress",
+    first: 20,
+  });
+
+  useEffect(() => {
+    dgroup("SEARCH", () => {
+      dlog("loading =", searchLoading);
+      dlog("recommended.count =", recommended?.length || 0);
+      dlog("hasNextPage =", !!hasNextPage);
+    });
+  }, [searchLoading, recommended?.length, hasNextPage]);
+
   // ---- model helpers (unchanged) ----
   function getSavedModelUrl(): string | null {
     try {
@@ -40,8 +99,11 @@ export default function Shop() {
       if (cur) return cur;
       const raw = localStorage.getItem("fullBodyPhotos");
       const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) && arr[0]?.url ? arr[0].url : null;
-    } catch {
+      const url = Array.isArray(arr) && arr[0]?.url ? arr[0].url : null;
+      dlog("getSavedModelUrl() ->", preview(url));
+      return url;
+    } catch (e) {
+      dlog("getSavedModelUrl() error:", e);
       return null;
     }
   }
@@ -54,37 +116,47 @@ export default function Shop() {
     });
   }
   async function ensureHttpsViaUpload(urlOrDataUrl: string): Promise<string> {
-    if (isHttpUrl(urlOrDataUrl)) return urlOrDataUrl;
+    dgroup("UPLOAD ensureHttpsViaUpload()", () => {
+      dlog("input =", preview(urlOrDataUrl));
+    });
+    if (isHttpUrl(urlOrDataUrl)) {
+      dlog("already https, skip upload");
+      return urlOrDataUrl;
+    }
     if (!urlOrDataUrl?.startsWith("data:image/")) {
+      dlog("unsupported scheme; throwing");
       throw new Error(
         "Unsupported model image scheme (need HTTPS or data:image/*)"
       );
     }
+    console.time("[Shop] fal-upload");
     const blob = await dataUrlToBlob(urlOrDataUrl);
     const fd = new FormData();
     fd.append(
       "file",
       new File([blob], `model-${Date.now()}.jpg`, { type: blob.type })
     );
-    const up = await fetch(apiUrl("/api/fal-upload"), {
-      method: "POST",
-      body: fd,
-    });
+    const uploadTo = apiUrl("/api/fal-upload");
+    dlog("POST", uploadTo);
+    const up = await fetch(uploadTo, { method: "POST", body: fd });
     const j = await up.json();
+    console.timeEnd("[Shop] fal-upload");
+    dlog("fal-upload status =", up.status, "json =", j);
     if (!up.ok) throw new Error(j?.error || "Upload failed");
     return j.url as string;
   }
 
   // ---- product helpers ----
   function extractGarmentUrl(p: any): string | null {
-    return (
+    const u =
       p?.featuredImage?.url ||
       p?.images?.[0]?.src ||
       p?.images?.[0]?.url ||
       p?.image?.src ||
       p?.media?.[0]?.preview?.image?.url ||
-      null
-    );
+      null;
+    dlog("extractGarmentUrl(product.id=", p?.id, ") ->", u);
+    return u;
   }
   function getLightMeta(p: any): LookMeta {
     const price =
@@ -92,8 +164,8 @@ export default function Shop() {
       Number(p?.price) ||
       Number(p?.presentmentPrices?.[0]?.price?.amount) ||
       undefined;
-    return {
-      productId: p?.id, // <-- GID, e.g. "gid://shopify/Product/123"
+    const meta: LookMeta = {
+      productId: p?.id,
       product: p?.title ?? p?.name ?? undefined,
       merchant: p?.vendor ?? p?.brand ?? undefined,
       price,
@@ -101,6 +173,8 @@ export default function Shop() {
       productUrl:
         p?.onlineStoreUrl || (p?.handle ? `/products/${p.handle}` : undefined),
     };
+    dlog("getLightMeta ->", meta);
+    return meta;
   }
 
   // tolerant URL plucker
@@ -108,8 +182,9 @@ export default function Shop() {
     if (depth > 6 || input == null) return null;
     if (typeof input === "string") {
       const s = input.trim();
-      if (/^(https?:)?\/\//i.test(s) || s.startsWith("data:image/")) return s;
-      return null;
+      return /^(https?:)?\/\//i.test(s) || s.startsWith("data:image/")
+        ? s
+        : null;
     }
     if (Array.isArray(input)) {
       for (const v of input) {
@@ -148,22 +223,38 @@ export default function Shop() {
   async function runTryOnWithProduct(garment_image: string) {
     setLoading(true);
     setErr(null);
+    dgroup("TRYON: begin", () => {
+      dlog("garment_image =", garment_image);
+    });
     try {
       const savedModel = getSavedModelUrl();
       if (!savedModel) {
+        dlog("NO SAVED MODEL → redirect to /preferences");
         setErr("Add a full body photo first.");
         navigate("/preferences");
         return;
       }
-      const model_image = await ensureHttpsViaUpload(savedModel);
 
-      const res = await fetch(apiUrl("/api/tryon"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model_image, garment_image }),
+      dlog("normalizing model_image…");
+      const model_image = await ensureHttpsViaUpload(savedModel);
+      dlog("model_image (final) =", model_image);
+
+      const endpoint = apiUrl("/api/tryon");
+      const payload = { model_image, garment_image };
+      dlog("POST", endpoint, "body =", {
+        model_image: preview(model_image),
+        garment_image: preview(garment_image),
       });
 
+      console.time("[Shop] /api/tryon");
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const contentType = res.headers.get("content-type") || "";
+      dlog("tryon status =", res.status, "content-type =", contentType);
+
       let data: any = null;
       let textBody: string | null = null;
       if (contentType.includes("application/json")) {
@@ -175,6 +266,9 @@ export default function Shop() {
       } else {
         textBody = await res.text();
       }
+      console.timeEnd("[Shop] /api/tryon");
+      dlog("tryon response json =", data ?? "(none)");
+      if (textBody) dlog("tryon response text =", preview(textBody, 200));
 
       if (!res.ok) {
         const serverMsg =
@@ -187,22 +281,22 @@ export default function Shop() {
       if (data) outUrl = pluckFirstUrl(data);
       if (!outUrl && textBody) {
         const direct = textBody.trim();
-        if (
-          /^(https?:)?\/\//i.test(direct) ||
-          direct.startsWith("data:image/")
-        ) {
+        if (/^(https?:)?\/\//i.test(direct) || direct.startsWith("data:image/"))
           outUrl = direct;
-        } else {
+        else {
           const m = textBody.match(/https?:\/\/\S+/);
           if (m) outUrl = m[0];
         }
       }
 
+      dlog("derived outUrl =", outUrl);
       if (!outUrl) throw new Error("No URL found in response");
       setBgUrl(outUrl);
     } catch (e: any) {
-      console.error("[TRYON] error:", e);
-      setErr(e.message || "Try-on failed");
+      console.error("[TRYON] error (full):", e);
+      setErr(
+        "Sorry, this item isn’t compatible right now. Try a different one."
+      );
     } finally {
       setLoading(false);
     }
@@ -210,6 +304,7 @@ export default function Shop() {
 
   async function onSelect(p: any) {
     if (inFlightId === p.id) return;
+    dlog("onSelect product.id =", p?.id);
 
     const isSelecting = !selected[p.id];
     setSelected({ [p.id]: isSelecting });
@@ -217,9 +312,13 @@ export default function Shop() {
     if (isSelecting) {
       document.body.classList.add("darkmode");
       const garment = extractGarmentUrl(p);
-      if (!garment) return setErr("Couldn't find this product's image.");
+      if (!garment) {
+        setErr("Couldn't find this product's image.");
+        dlog("No garment image for product.id =", p?.id);
+        return;
+      }
       setInFlightId(p.id);
-      setLastMeta(getLightMeta(p)); // <-- store only light meta incl productId
+      setLastMeta(getLightMeta(p)); // store only light meta incl productId
       await runTryOnWithProduct(garment);
       setInFlightId(null);
     } else {
@@ -231,12 +330,15 @@ export default function Shop() {
 
   function saveCurrentPhoto() {
     if (!bgUrl) return;
+    dlog("saveCurrentPhoto", { url: bgUrl, meta: lastMeta });
     navigate("/saved", {
-      state: { photo: bgUrl, meta: lastMeta ?? undefined }, // meta contains productId
+      state: { photo: bgUrl, meta: lastMeta ?? undefined },
     });
   }
 
-  if (!products?.length) {
+  // Keep the same empty-state screen, but only show it if no saved products AND no recommended results.
+  if (!products?.length && !recommended?.length && !searchLoading) {
+    dlog("Empty state: no saved products and no recommended results");
     return (
       <div className="min-h-dvh flex items-center justify-center px-6 text-center">
         <div>
@@ -257,6 +359,8 @@ export default function Shop() {
             src={bgUrl}
             alt="Your selected look"
             className="w-full h-full object-cover"
+            onLoad={() => dlog("[IMG] loaded", preview(bgUrl))}
+            onError={() => dlog("[IMG] error", preview(bgUrl))}
           />
         </div>
       )}
@@ -277,67 +381,105 @@ export default function Shop() {
           <button
             type="button"
             onClick={saveCurrentPhoto}
-            className="rounded-full bg-black text-white px-5 py-3 text-sm shadow hover:bg-gray-800"
+            className="rounded-full bg-black  text-white px-5 py-3 text-sm shadow hover:bg-gray-800"
           >
             Save this look
           </button>
         </div>
       )}
 
-      {/* Tray handle */}
-      <button
-        type="button"
-        onClick={() => setTrayDown((v) => !v)}
-        aria-label={
-          trayDown ? "Show product carousel" : "Hide product carousel"
-        }
-        className="fixed bottom-3 left-1/2 -translate-x-1/2 z-30 rounded-full bg-black/70 text-white px-3 py-2 shadow hover:bg-black/80"
-      >
-        {trayDown ? "▲" : "▼"}
-      </button>
-
-      {/* Carousel */}
+      {/* Tray (Hide button lives inside. When hidden, show a bottom "Show" button) */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-20 p-4 transition-transform duration-300 ${
+        className={`fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 mb-18 ${
           trayDown ? "translate-y-full" : "translate-y-0"
         }`}
       >
-        <div className="relative">
-          <div
-            ref={trackRef}
-            className="flex gap-4 overflow-x-auto px-2 pb-2 scroll-smooth snap-x snap-mandatory"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {products.map((p) => {
-              const isSelected = !!selected[p.id];
-              return (
-                <div
-                  key={p.id}
-                  className={`relative snap-center shrink-0 rounded-2xl p-2 overflow-hidden transition-colors ${
-                    isSelected
-                      ? "border-4 border-purple-500 bg-white"
-                      : "bg-white border border-gray-200"
-                  }`}
-                  style={{ width: 200, minWidth: 200 }}
-                >
-                  <ProductCard product={p} />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelect(p);
-                    }}
-                    className="absolute top-2 right-2 z-20 rounded-full bg-black text-white px-3 py-1 text-xs shadow hover:bg-gray-800"
-                    aria-pressed={isSelected}
+        <div className="p-4">
+          {!trayDown && (
+            <div className="flex items-center justify-center mb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  dlog("Tray: hide");
+                  setTrayDown(true);
+                }}
+                className="rounded-full bg-black/70 text-white px-3 py-1.5 text-sm shadow hover:bg-black/80"
+              >
+                Hide
+              </button>
+            </div>
+          )}
+
+          {/* Carousel */}
+          <div className="relative">
+            <div
+              ref={trackRef}
+              className="flex gap-4 overflow-x-auto px-2 pb-2 scroll-smooth snap-x snap-mandatory"
+              style={{ scrollbarWidth: "none" } as React.CSSProperties}
+              onScroll={(e) =>
+                dlog(
+                  "carousel scrollLeft =",
+                  (e.target as HTMLDivElement).scrollLeft
+                )
+              }
+            >
+              {recommended?.map((p: any) => {
+                const isSelected = !!selected[p.id];
+                return (
+                  <div
+                    key={p.id}
+                    className={`relative snap-center shrink-0 rounded-2xl p-2 overflow-hidden transition-colors ${
+                      isSelected
+                        ? "border-4 border-purple-500 bg-white"
+                        : "bg-white border border-gray-200"
+                    }`}
+                    style={{ width: 200, minWidth: 200 }}
                   >
-                    {isSelected ? "Selected" : "Try on"}
-                  </button>
-                </div>
-              );
-            })}
+                    <ProductCard product={p} />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(p);
+                      }}
+                      className="absolute top-2 right-2 z-20 rounded-full bg-black text-white px-3 py-1 text-xs shadow hover:bg-gray-800"
+                      aria-pressed={isSelected}
+                    >
+                      {isSelected ? "Selected" : "Try on"}
+                    </button>
+                  </div>
+                );
+              })}
+              {hasNextPage && fetchMore && (
+                <button
+                  onClick={() => {
+                    dlog("fetchMore()");
+                    fetchMore();
+                  }}
+                  className="shrink-0 px-3 py-2 rounded-full border text-sm bg-white"
+                >
+                  Load more
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {trayDown && (
+        <div className="fixed inset-x-0 bottom-0 z-30 mb-20 flex justify-center pb-4">
+          <button
+            type="button"
+            onClick={() => {
+              dlog("Tray: show");
+              setTrayDown(false);
+            }}
+            className="rounded-full bg-black/70 text-white px-4 py-2 text-sm shadow hover:bg-black/80"
+          >
+            Show recommendations
+          </button>
+        </div>
+      )}
     </div>
   );
 }
