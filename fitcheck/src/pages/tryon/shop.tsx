@@ -45,101 +45,166 @@ export default function Shop() {
     
     console.log('🎯 Building search queries for:', { gender, occasion, vibe });
     
-    // Generate MORE DIVERSE search queries
+    // Generate HIGHLY SPECIFIC search queries
     const queries = [];
     
-    // Query 1: Basic gender-based items
     if (gender === 'women') {
-      queries.push('dress');
-      queries.push('blouse');
-      queries.push('skirt');
+      // Women's specific searches
+      if (occasion.includes('wedding')) {
+        queries.push('wedding dress');
+        queries.push('bridal gown');
+        queries.push('bridesmaid dress');
+        queries.push('evening gown');
+        queries.push('cocktail dress');
+        queries.push('formal dress');
+      } else if (occasion.includes('vacation')) {
+        queries.push('vacation dress');
+        queries.push('beach dress');
+        queries.push('travel dress');
+        queries.push('casual dress');
+        queries.push('summer dress');
+        queries.push('maxi dress');
+      } else if (occasion.includes('date')) {
+        queries.push('date night dress');
+        queries.push('romantic dress');
+        queries.push('elegant dress');
+        queries.push('little black dress');
+        queries.push('cocktail dress');
+        queries.push('evening dress');
+      } else if (occasion.includes('concert')) {
+        queries.push('concert outfit');
+        queries.push('party dress');
+        queries.push('festival dress');
+        queries.push('music event dress');
+        queries.push('night out dress');
+        queries.push('club dress');
+      } else if (occasion.includes('formal') || occasion.includes('business')) {
+        queries.push('formal dress');
+        queries.push('business dress');
+        queries.push('professional dress');
+        queries.push('office dress');
+        queries.push('corporate dress');
+        queries.push('work dress');
+      } else if (occasion.includes('graduation')) {
+        queries.push('graduation dress');
+        queries.push('formal dress');
+        queries.push('elegant dress');
+        queries.push('ceremony dress');
+        queries.push('special occasion dress');
+        queries.push('celebration dress');
+      } else if (occasion.includes('birthday')) {
+        queries.push('birthday dress');
+        queries.push('party dress');
+        queries.push('celebration dress');
+        queries.push('special dress');
+        queries.push('festive dress');
+        queries.push('fun dress');
+      } else if (occasion.includes('casual')) {
+        queries.push('casual dress');
+        queries.push('everyday dress');
+        queries.push('comfortable dress');
+        queries.push('relaxed dress');
+        queries.push('simple dress');
+        queries.push('basic dress');
+      } else if (occasion.includes('party')) {
+        queries.push('party dress');
+        queries.push('festival dress');
+        queries.push('celebration dress');
+        queries.push('fun dress');
+        queries.push('dance dress');
+        queries.push('night out dress');
+      } else {
+        // General women's clothing
+        queries.push('women dress');
+        queries.push('women blouse');
+        queries.push('women skirt');
+        queries.push('women top');
+        queries.push('women shirt');
+        queries.push('women pants');
+      }
     } else if (gender === 'men') {
-      queries.push('shirt');
-      queries.push('pants');
-      queries.push('jacket');
+      // Men's specific searches
+      if (occasion.includes('wedding')) {
+        queries.push('wedding suit');
+        queries.push('tuxedo');
+        queries.push('formal suit');
+        queries.push('dinner jacket');
+        queries.push('wedding attire');
+        queries.push('formal wear');
+      } else if (occasion.includes('vacation')) {
+        queries.push('vacation shirt');
+        queries.push('travel shirt');
+        queries.push('casual shirt');
+        queries.push('beach shirt');
+        queries.push('summer shirt');
+        queries.push('vacation outfit');
+      } else if (occasion.includes('date')) {
+        queries.push('date night shirt');
+        queries.push('romantic shirt');
+        queries.push('elegant shirt');
+        queries.push('dress shirt');
+        queries.push('formal shirt');
+        queries.push('evening shirt');
+      } else if (occasion.includes('concert')) {
+        queries.push('concert shirt');
+        queries.push('band t-shirt');
+        queries.push('music shirt');
+        queries.push('festival shirt');
+        queries.push('night out shirt');
+        queries.push('party shirt');
+      } else if (occasion.includes('formal') || occasion.includes('business')) {
+        queries.push('business suit');
+        queries.push('formal suit');
+        queries.push('professional suit');
+        queries.push('office suit');
+        queries.push('corporate suit');
+        queries.push('work suit');
+      } else if (occasion.includes('graduation')) {
+        queries.push('graduation suit');
+        queries.push('formal suit');
+        queries.push('ceremony suit');
+        queries.push('special occasion suit');
+        queries.push('celebration suit');
+        queries.push('dress suit');
+      } else if (occasion.includes('birthday')) {
+        queries.push('birthday shirt');
+        queries.push('party shirt');
+        queries.push('celebration shirt');
+        queries.push('special shirt');
+        queries.push('festive shirt');
+        queries.push('fun shirt');
+      } else if (occasion.includes('casual')) {
+        queries.push('casual shirt');
+        queries.push('everyday shirt');
+        queries.push('comfortable shirt');
+        queries.push('relaxed shirt');
+        queries.push('simple shirt');
+        queries.push('basic shirt');
+      } else if (occasion.includes('party')) {
+        queries.push('party shirt');
+        queries.push('festival shirt');
+        queries.push('celebration shirt');
+        queries.push('fun shirt');
+        queries.push('dance shirt');
+        queries.push('night out shirt');
+      } else {
+        // General men's clothing
+        queries.push('men shirt');
+        queries.push('men pants');
+        queries.push('men jacket');
+        queries.push('men t-shirt');
+        queries.push('men jeans');
+        queries.push('men hoodie');
+      }
     } else {
-      queries.push('tshirt');
-      queries.push('hoodie');
-      queries.push('jeans');
+      // Unisex searches
+      queries.push('unisex t-shirt');
+      queries.push('unisex hoodie');
+      queries.push('unisex jeans');
+      queries.push('unisex jacket');
+      queries.push('unisex shirt');
+      queries.push('unisex pants');
     }
-    
-    // Query 2: Occasion-specific
-    if (occasion.includes('wedding')) {
-      queries.push('wedding dress');
-      queries.push('bridal gown');
-      queries.push('evening dress');
-    } else if (occasion.includes('vacation')) {
-      queries.push('vacation dress');
-      queries.push('travel outfit');
-      queries.push('casual wear');
-    } else if (occasion.includes('date')) {
-      queries.push('date night dress');
-      queries.push('romantic outfit');
-      queries.push('elegant dress');
-    } else if (occasion.includes('concert')) {
-      queries.push('concert outfit');
-      queries.push('party dress');
-      queries.push('music festival');
-    } else if (occasion.includes('formal')) {
-      queries.push('formal dress');
-      queries.push('business suit');
-      queries.push('cocktail dress');
-    }
-    
-    // Query 3: Vibe-specific
-    if (vibe.includes('elegant')) {
-      queries.push('elegant dress');
-      queries.push('satin dress');
-      queries.push('silk blouse');
-    } else if (vibe.includes('soft')) {
-      queries.push('soft dress');
-      queries.push('gentle colors');
-      queries.push('pastel dress');
-    } else if (vibe.includes('bold')) {
-      queries.push('bold dress');
-      queries.push('bright colors');
-      queries.push('vibrant outfit');
-    } else if (vibe.includes('minimal')) {
-      queries.push('minimal dress');
-      queries.push('simple outfit');
-      queries.push('clean design');
-    } else if (vibe.includes('chic')) {
-      queries.push('chic dress');
-      queries.push('stylish outfit');
-      queries.push('fashionable dress');
-    }
-    
-    // Query 4: Color-based (if available)
-    const colorSeason = (userPreferences['Color Season']?.[0] || '').toLowerCase();
-    if (colorSeason.includes('winter')) {
-      queries.push('black dress');
-      queries.push('navy blue');
-    } else if (colorSeason.includes('spring')) {
-      queries.push('pink dress');
-      queries.push('coral dress');
-    } else if (colorSeason.includes('summer')) {
-      queries.push('blue dress');
-      queries.push('lavender dress');
-    } else if (colorSeason.includes('autumn')) {
-      queries.push('brown dress');
-      queries.push('orange dress');
-    }
-    
-    // Query 5: Budget-based
-    const budget = (userPreferences.Budget?.[0] || '').toLowerCase();
-    if (budget.includes('50')) {
-      queries.push('affordable dress');
-      queries.push('budget friendly');
-    } else if (budget.includes('250')) {
-      queries.push('mid range dress');
-      queries.push('quality dress');
-    } else if (budget.includes('500')) {
-      queries.push('luxury dress');
-      queries.push('premium dress');
-    }
-    
-    // Query 6: General fallback
-    queries.push('clothing');
     
     const finalQueries = [...new Set(queries)].slice(0, 6);
     console.log('🔍 Final search queries:', finalQueries);
