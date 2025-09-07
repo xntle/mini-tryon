@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
+import { useState, useRef, useMemo } from "react";
+import { useSavedProducts, useProductSearch, useRecommendedProducts, ProductCard } from "@shopify/shop-minis-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiUrl } from "../../lib/api";
 
@@ -18,9 +18,112 @@ type LookMeta = {
 };
 
 export default function Shop() {
-  const { products } = useSavedProducts(); // user's saved products
+  const { products: savedProducts } = useSavedProducts(); // user's saved products
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
+
+  // Get user preferences for search
+  const userPreferences = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem('userPreferences') || '{}');
+    } catch {
+      return {
+        Gender: ['Women'],
+        Occasion: ['Wedding/Engagement'],
+        Vibe: ['Elegant & Classy'],
+        'Color Season': ['True Winter'],
+        Budget: ['$100-250']
+      };
+    }
+  }, []);
+
+  // Build search queries from preferences
+  const searchQueries = useMemo(() => {
+    const gender = (userPreferences.Gender?.[0] || 'Women').toLowerCase();
+    const occasion = (userPreferences.Occasion?.[0] || 'Wedding/Engagement').toLowerCase();
+    const vibe = (userPreferences.Vibe?.[0] || 'Elegant & Classy').toLowerCase();
+    
+    // Generate diverse search queries
+    const queries = [];
+    
+    if (gender === 'women') {
+      queries.push('dress', 'blouse', 'skirt', 'women');
+    } else if (gender === 'men') {
+      queries.push('shirt', 'pants', 'jacket', 'men');
+    } else {
+      queries.push('tshirt', 'hoodie', 'jeans', 'unisex');
+    }
+    
+    if (occasion.includes('wedding')) {
+      queries.push('wedding', 'wedding dress', 'bridal');
+    } else if (occasion.includes('vacation')) {
+      queries.push('vacation', 'travel', 'casual');
+    } else if (occasion.includes('date')) {
+      queries.push('date night', 'romantic', 'elegant');
+    } else if (occasion.includes('concert')) {
+      queries.push('concert', 'music', 'party');
+    } else if (occasion.includes('formal')) {
+      queries.push('formal', 'suit', 'dress');
+    }
+    
+    if (vibe.includes('elegant')) {
+      queries.push('elegant', 'satin', 'silk');
+    } else if (vibe.includes('soft')) {
+      queries.push('soft', 'gentle', 'pastel');
+    } else if (vibe.includes('bold')) {
+      queries.push('bold', 'bright', 'vibrant');
+    } else if (vibe.includes('minimal')) {
+      queries.push('minimal', 'simple', 'clean');
+    } else if (vibe.includes('chic')) {
+      queries.push('chic', 'stylish', 'fashionable');
+    }
+    
+    return [...new Set(queries)].slice(0, 6); // Remove duplicates, limit to 6
+  }, [userPreferences]);
+
+  // Run multiple searches for variety
+  const s1 = useProductSearch({ query: searchQueries[0] || '', first: 6 });
+  const s2 = useProductSearch({ query: searchQueries[1] || '', first: 6 });
+  const s3 = useProductSearch({ query: searchQueries[2] || '', first: 6 });
+  const s4 = useProductSearch({ query: searchQueries[3] || '', first: 6 });
+  const s5 = useProductSearch({ query: searchQueries[4] || '', first: 6 });
+  const s6 = useProductSearch({ query: searchQueries[5] || '', first: 6 });
+
+  // Fallback to recommended products
+  const recommendedProducts = useRecommendedProducts();
+
+  // Merge all search results with saved products
+  const products = useMemo(() => {
+    const byId = new Map<string, any>();
+    const add = (arr?: any[] | null) => (arr || []).forEach(p => { 
+      if (p?.id && !byId.has(p.id)) byId.set(p.id, p); 
+    });
+    
+    // Add all search results first
+    add(s1.products); add(s2.products); add(s3.products); 
+    add(s4.products); add(s5.products); add(s6.products);
+    
+    let merged = Array.from(byId.values());
+    
+    // If no search results, try recommended products
+    if (merged.length === 0) {
+      console.log('🔍 No search results found, trying recommended products...');
+      merged = (recommendedProducts?.products || []);
+    }
+    
+    // Add saved products as fallback
+    if (merged.length === 0) {
+      console.log('🔍 No recommended products found, using saved products...');
+      merged = savedProducts || [];
+    } else {
+      // Add saved products to the mix
+      add(savedProducts);
+      merged = Array.from(byId.values());
+    }
+    
+    console.log('✅ Found products:', merged.length);
+    return merged;
+  }, [s1.products, s2.products, s3.products, s4.products, s5.products, s6.products, recommendedProducts?.products, savedProducts]);
 
   const [lastMeta, setLastMeta] = useState<LookMeta | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
