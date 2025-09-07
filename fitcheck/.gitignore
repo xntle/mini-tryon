@@ -1,5 +1,5 @@
 node_modules
 .minis-cache
 *.tsbuildinfo
-.env
+.env*
 .env.production

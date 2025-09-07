@@ -1,7 +1,12 @@
 import { useState, useRef } from "react";
-import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
+import {
+  useSavedProducts,
+  ProductCard,
+  useProductSearch,
+} from "@shopify/shop-minis-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiUrl } from "../../lib/api";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 type ShopLocationState = {
   photo?: string;
@@ -18,7 +23,7 @@ type LookMeta = {
 };
 
 export default function Shop() {
-  const { products } = useSavedProducts(); // user's saved products
+  const { products } = useSavedProducts(); // user's saved products (left as-is)
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
 
@@ -32,6 +37,18 @@ export default function Shop() {
   const [err, setErr] = useState<string | null>(null);
   const [inFlightId, setInFlightId] = useState<string | null>(null);
   const [trayDown, setTrayDown] = useState(false);
+
+  // ---- SEARCH (recommended items for the carousel) ----
+  // Replace "dress" with your seeded query if you wire Preferences -> SearchPlan.
+  const {
+    products: recommended = [],
+    loading: searchLoading,
+    hasNextPage,
+    fetchMore,
+  } = useProductSearch({
+    query: "dress",
+    first: 20,
+  });
 
   // ---- model helpers (unchanged) ----
   function getSavedModelUrl(): string | null {
@@ -236,7 +253,8 @@ export default function Shop() {
     });
   }
 
-  if (!products?.length) {
+  // Keep the same empty-state screen, but only show it if there are no saved products AND no recommended results.
+  if (!products?.length && !recommended?.length && !searchLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center px-6 text-center">
         <div>
@@ -284,57 +302,69 @@ export default function Shop() {
         </div>
       )}
 
-      {/* Tray handle */}
-      <button
-        type="button"
-        onClick={() => setTrayDown((v) => !v)}
-        aria-label={
-          trayDown ? "Show product carousel" : "Hide product carousel"
-        }
-        className="fixed bottom-3 left-1/2 -translate-x-1/2 z-30 rounded-full bg-black/70 text-white px-3 py-2 shadow hover:bg-black/80"
-      >
-        {trayDown ? "▲" : "▼"}
-      </button>
-
-      {/* Carousel */}
+      {/* Tray (handle + carousel live together) */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-20 p-4 transition-transform duration-300 ${
+        className={`fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 ${
           trayDown ? "translate-y-full" : "translate-y-0"
         }`}
       >
-        <div className="relative">
-          <div
-            ref={trackRef}
-            className="flex gap-4 overflow-x-auto px-2 pb-2 scroll-smooth snap-x snap-mandatory"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {products.map((p) => {
-              const isSelected = !!selected[p.id];
-              return (
-                <div
-                  key={p.id}
-                  className={`relative snap-center shrink-0 rounded-2xl p-2 overflow-hidden transition-colors ${
-                    isSelected
-                      ? "border-4 border-purple-500 bg-white"
-                      : "bg-white border border-gray-200"
-                  }`}
-                  style={{ width: 200, minWidth: 200 }}
-                >
-                  <ProductCard product={p} />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelect(p);
-                    }}
-                    className="absolute top-2 right-2 z-20 rounded-full bg-black text-white px-3 py-1 text-xs shadow hover:bg-gray-800"
-                    aria-pressed={isSelected}
+        {/* Handle that moves with the tray */}
+        <button
+          type="button"
+          onClick={() => setTrayDown((v) => !v)}
+          aria-label={
+            trayDown ? "Show product carousel" : "Hide product carousel"
+          }
+          className="absolute -top-10 left-1/2 -translate-x-1/2 rounded-full bg-black/70 text-white px-3 py-2 shadow hover:bg-black/80"
+        >
+          {/* When tray is DOWN/hidden, show Up chevron to bring it back up */}
+          {trayDown ? <ChevronUp /> : <ChevronDown />}
+        </button>
+
+        {/* Carousel */}
+        <div className="p-4">
+          <div className="relative">
+            <div
+              ref={trackRef}
+              className="flex gap-4 overflow-x-auto px-2 pb-2 scroll-smooth snap-x snap-mandatory"
+              style={{ scrollbarWidth: "none" } as React.CSSProperties}
+            >
+              {recommended?.map((p: any) => {
+                const isSelected = !!selected[p.id];
+                return (
+                  <div
+                    key={p.id}
+                    className={`relative snap-center shrink-0 rounded-2xl p-2 overflow-hidden transition-colors ${
+                      isSelected
+                        ? "border-4 border-purple-500 bg-white"
+                        : "bg-white border border-gray-200"
+                    }`}
+                    style={{ width: 200, minWidth: 200 }}
                   >
-                    {isSelected ? "Selected" : "Try on"}
-                  </button>
-                </div>
-              );
-            })}
+                    <ProductCard product={p} />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(p);
+                      }}
+                      className="absolute top-2 right-2 z-20 rounded-full bg-black text-white px-3 py-1 text-xs shadow hover:bg-gray-800"
+                      aria-pressed={isSelected}
+                    >
+                      {isSelected ? "Selected" : "Try on"}
+                    </button>
+                  </div>
+                );
+              })}
+              {hasNextPage && fetchMore && (
+                <button
+                  onClick={() => fetchMore()}
+                  className="shrink-0 px-3 py-2 rounded-full border text-sm bg-white"
+                >
+                  Load more
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
