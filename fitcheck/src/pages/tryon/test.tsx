@@ -13,76 +13,41 @@ type ShopLocationState = {
 };
 
 type LookMeta = {
-  productId?: string; // <-- only persist the ID for useProduct()
+  productId?: string;
   product?: string;
   merchant?: string;
   price?: number;
-  productImage?: string; // optional fallback for grids
-  productUrl?: string; // optional
+  productImage?: string;
+  productUrl?: string;
 };
 
-/* ---------------------------
-   DEBUG helpers + log bridge
----------------------------- */
+// ---- DEBUG helpers ----
 const DEBUG =
   (typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).has("debug")) ||
   // @ts-ignore
   !!(typeof import.meta !== "undefined" && import.meta?.env?.DEV);
 
-const LOG_EVENT = "shop:log";
-
-type LogItem = { ts: number; msg: string };
-
 function preview(val?: string | null, n = 120) {
   if (!val) return val as any;
-  if (typeof val === "string" && val.startsWith("data:image/")) {
-    return `data:image/... len=${val.length}`;
-  }
-  const s = String(val);
-  return s.length > n ? s.slice(0, n) + "..." : s;
+  if (val.startsWith("data:image/")) return `data:image/... len=${val.length}`;
+  return val.length > n ? val.slice(0, n) + "..." : val;
 }
-
-function fmtVal(v: any): string {
-  if (typeof v === "string") return v;
-  try {
-    return JSON.stringify(v);
-  } catch {
-    return String(v);
-  }
-}
-
-function emitLog(...args: any[]) {
-  try {
-    const msg = args.map(fmtVal).join(" ");
-    const detail: LogItem = { ts: Date.now(), msg };
-    window.dispatchEvent(new CustomEvent(LOG_EVENT as any, { detail }));
-  } catch {
-    /* no-op */
-  }
-}
-
 function dlog(...args: any[]) {
   if (DEBUG) console.log("[Shop]", ...args);
-  emitLog("[Shop]", ...args);
 }
-
 function dgroup(label: string, fn: () => void) {
-  if (DEBUG) console.group(label);
-  emitLog(`\n▼ ${label}`);
+  if (!DEBUG) return fn();
+  console.group(label);
   try {
     fn();
   } finally {
-    if (DEBUG) console.groupEnd();
-    emitLog(`▲ end: ${label}\n`);
+    console.groupEnd();
   }
 }
 
-/* ---------------------------
-           Component
----------------------------- */
 export default function Shop() {
-  const { products } = useSavedProducts(); // user's saved products (left as-is)
+  const { products } = useSavedProducts();
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
 
@@ -96,22 +61,7 @@ export default function Shop() {
   const [err, setErr] = useState<string | null>(null);
   const [inFlightId, setInFlightId] = useState<string | null>(null);
   const [trayDown, setTrayDown] = useState(false);
-
-  // Debug console UI state + sink
-  const [debugOpen, setDebugOpen] = useState<boolean>(DEBUG);
-  const [logs, setLogs] = useState<LogItem[]>([]);
-  useEffect(() => {
-    const onLog = (e: Event) => {
-      const ev = e as CustomEvent<LogItem>;
-      setLogs((prev) => {
-        const next = [...prev, ev.detail];
-        // keep last 200 lines
-        return next.length > 200 ? next.slice(next.length - 200) : next;
-      });
-    };
-    window.addEventListener(LOG_EVENT, onLog as any);
-    return () => window.removeEventListener(LOG_EVENT, onLog as any);
-  }, []);
+  const [showResultCard, setShowResultCard] = useState(false); // NEW: toggle URL card
 
   // Startup debug
   useEffect(() => {
@@ -143,7 +93,7 @@ export default function Shop() {
     });
   }, [searchLoading, recommended?.length, hasNextPage]);
 
-  // ---- model helpers (unchanged) ----
+  // ---- model helpers ----
   function getSavedModelUrl(): string | null {
     try {
       const cur = localStorage.getItem("fullBodyCurrentUrl");
@@ -166,18 +116,6 @@ export default function Shop() {
       type: mime,
     });
   }
-  function fetchWithTimeout(
-    input: RequestInfo | URL,
-    init: RequestInit = {},
-    ms = 15000
-  ) {
-    const ctrl = new AbortController();
-    const id = setTimeout(() => ctrl.abort(), ms);
-    return fetch(input, { ...init, signal: ctrl.signal }).finally(() =>
-      clearTimeout(id)
-    );
-  }
-
   async function ensureHttpsViaUpload(urlOrDataUrl: string): Promise<string> {
     dgroup("UPLOAD ensureHttpsViaUpload()", () => {
       dlog("input =", preview(urlOrDataUrl));
@@ -192,7 +130,6 @@ export default function Shop() {
         "Unsupported model image scheme (need HTTPS or data:image/*)"
       );
     }
-
     console.time("[Shop] fal-upload");
     const blob = await dataUrlToBlob(urlOrDataUrl);
     const fd = new FormData();
@@ -200,27 +137,14 @@ export default function Shop() {
       "file",
       new File([blob], `model-${Date.now()}.jpg`, { type: blob.type })
     );
-
     const uploadTo = apiUrl("/api/fal-upload");
     dlog("POST", uploadTo);
-
-    try {
-      const up = await fetchWithTimeout(
-        uploadTo,
-        { method: "POST", body: fd },
-        15000
-      );
-      dlog("fal-upload response arrived, status =", up.status);
-      const j = await up.json().catch(() => ({}));
-      dlog("fal-upload json =", j);
-      console.timeEnd("[Shop] fal-upload");
-      if (!up.ok) throw new Error(j?.error || `Upload failed (${up.status})`);
-      if (!j?.url) throw new Error("Upload returned no url");
-      return j.url as string;
-    } catch (e: any) {
-      dlog("fal-upload error =", e?.name, e?.message);
-      throw e;
-    }
+    const up = await fetch(uploadTo, { method: "POST", body: fd });
+    const j = await up.json();
+    console.timeEnd("[Shop] fal-upload");
+    dlog("fal-upload status =", up.status, "json =", j);
+    if (!up.ok) throw new Error(j?.error || "Upload failed");
+    return j.url as string;
   }
 
   // ---- product helpers ----
@@ -297,6 +221,30 @@ export default function Shop() {
     return null;
   }
 
+  // Helpers for the URL card
+  function openInNewTab() {
+    if (!bgUrl) return;
+    window.open(bgUrl, "_blank", "noopener,noreferrer");
+  }
+  async function copyResultUrl() {
+    if (!bgUrl) return;
+    try {
+      await navigator.clipboard.writeText(bgUrl);
+      dlog("Copied result URL to clipboard");
+    } catch (e) {
+      dlog("Copy failed:", e);
+    }
+  }
+  function downloadResult() {
+    if (!bgUrl) return;
+    const a = document.createElement("a");
+    a.href = bgUrl;
+    a.download = "tryon.jpg";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   async function runTryOnWithProduct(garment_image: string) {
     setLoading(true);
     setErr(null);
@@ -368,7 +316,9 @@ export default function Shop() {
 
       dlog("derived outUrl =", outUrl);
       if (!outUrl) throw new Error("No URL found in response");
+
       setBgUrl(outUrl);
+      setShowResultCard(true); // show URL card after success
     } catch (e: any) {
       console.error("[TRYON] error (full):", e);
       setErr(
@@ -395,13 +345,14 @@ export default function Shop() {
         return;
       }
       setInFlightId(p.id);
-      setLastMeta(getLightMeta(p)); // store only light meta incl productId
+      setLastMeta(getLightMeta(p));
       await runTryOnWithProduct(garment);
       setInFlightId(null);
     } else {
       document.body.classList.remove("darkmode");
       setBgUrl(state?.tryOnUrl ?? state?.photo ?? null);
       setLastMeta(null);
+      setShowResultCard(false);
     }
   }
 
@@ -413,7 +364,6 @@ export default function Shop() {
     });
   }
 
-  // Keep the same empty-state screen, but only show it if no saved products AND no recommended results.
   if (!products?.length && !recommended?.length && !searchLoading) {
     dlog("Empty state: no saved products and no recommended results");
     return (
@@ -428,9 +378,6 @@ export default function Shop() {
     );
   }
 
-  /* -------------
-     RENDER
-  ---------------*/
   return (
     <div className="pb-24 pt-6 px-4 max-w-xl mx-auto">
       {bgUrl && (
@@ -457,25 +404,61 @@ export default function Shop() {
       )}
 
       {bgUrl && !loading && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1">
-          <button
-            type="button"
-            onClick={saveCurrentPhoto}
-            className="rounded-full bg-black text-white px-5 py-3 text-sm shadow hover:bg-gray-800"
-          >
-            Save this look
-          </button>
-          {/* Clickable link to the result image */}
-          <a
-            href={bgUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs underline text-white/90 bg-black/50 rounded-full px-3 py-1"
-            title={bgUrl}
-          >
-            Open result image
-          </a>
-        </div>
+        <>
+          {/* Save button (unchanged) */}
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30">
+            <button
+              type="button"
+              onClick={saveCurrentPhoto}
+              className="rounded-full bg-black text-white px-5 py-3 text-sm shadow hover:bg-gray-800"
+            >
+              Save this look
+            </button>
+          </div>
+
+          {/* NEW: Result URL card (clickable + copy + open + download) */}
+          {showResultCard && (
+            <div className="fixed top-20 right-4 z-30 max-w-[80vw]">
+              <div className="rounded-xl bg-white/95 backdrop-blur border border-gray-200 shadow-lg p-3">
+                <div className="text-xs text-gray-500 mb-1">Result URL</div>
+                <a
+                  href={bgUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-700 underline break-all"
+                >
+                  {bgUrl}
+                </a>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={copyResultUrl}
+                    className="px-3 py-1.5 rounded-full border text-xs"
+                  >
+                    Copy
+                  </button>
+                  <button
+                    onClick={openInNewTab}
+                    className="px-3 py-1.5 rounded-full border text-xs"
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={downloadResult}
+                    className="px-3 py-1.5 rounded-full border text-xs"
+                  >
+                    Download
+                  </button>
+                  <button
+                    onClick={() => setShowResultCard(false)}
+                    className="px-3 py-1.5 rounded-full border text-xs"
+                  >
+                    Hide
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Tray (Hide button lives inside. When hidden, show a bottom "Show" button) */}
@@ -569,74 +552,6 @@ export default function Shop() {
             Show recommendations
           </button>
         </div>
-      )}
-
-      {/* ---------------------------
-           Floating Debug Console
-      ---------------------------- */}
-      {debugOpen ? (
-        <div className="fixed bottom-3 right-3 z-50 w-[min(92vw,520px)] max-h-[48vh] bg-zinc-900/90 text-zinc-100 border border-zinc-700 rounded-xl backdrop-blur-md shadow-2xl flex flex-col">
-          <div className="px-3 py-2 border-b border-zinc-700 flex items-center gap-2">
-            <span className="text-xs font-semibold">Debug</span>
-            <span className="text-[10px] text-zinc-400">
-              API:{" "}
-              {
-                // @ts-ignore
-                import.meta?.env?.VITE_API_BASE || "(proxy/dev)"
-              }
-            </span>
-            <span className="ml-auto" />
-            <button
-              className="text-[11px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
-              onClick={() => setLogs([])}
-            >
-              Clear
-            </button>
-            <button
-              className="text-[11px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
-              onClick={() => {
-                const txt = logs
-                  .map(
-                    (l) => `[${new Date(l.ts).toLocaleTimeString()}] ${l.msg}`
-                  )
-                  .join("\n");
-                navigator.clipboard.writeText(txt).catch(() => {});
-              }}
-            >
-              Copy
-            </button>
-            <button
-              className="text-[13px] px-2 py-1 rounded hover:bg-zinc-800"
-              onClick={() => setDebugOpen(false)}
-              aria-label="Close debug"
-              title="Close"
-            >
-              ×
-            </button>
-          </div>
-          <div className="p-2 text-[11px] overflow-auto leading-snug whitespace-pre-wrap font-mono">
-            {logs.length === 0 ? (
-              <div className="text-zinc-400">No logs yet…</div>
-            ) : (
-              logs.map((l, i) => (
-                <div key={i}>
-                  <span className="text-zinc-500">
-                    [{new Date(l.ts).toLocaleTimeString()}]
-                  </span>{" "}
-                  {l.msg}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      ) : (
-        <button
-          className="fixed bottom-3 right-3 z-50 h-9 w-9 rounded-full bg-black/70 text-white grid place-items-center shadow-lg"
-          onClick={() => setDebugOpen(true)}
-          title="Open debug"
-        >
-          🐞
-        </button>
       )}
     </div>
   );
