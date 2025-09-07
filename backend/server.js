@@ -144,5 +144,21 @@ app.post("/api/tryon", async (req, res) => {
   }
 });
 
+app.get("/api/proxy-image", async (req, res) => {
+  try {
+    const url = String(req.query.url || "");
+    if (!/^https:\/\/(storage\.googleapis\.com|fal\.media)\//.test(url)) {
+      return res.status(400).send("disallowed host");
+    }
+    const r = await fetch(url);
+    if (!r.ok) return res.status(r.status).send(await r.text());
+    res.set("Content-Type", r.headers.get("content-type") || "image/jpeg");
+    res.set("Cache-Control", "public, max-age=31536000, immutable");
+    r.body.pipe(res);
+  } catch (e) {
+    res.status(500).send(String(e?.message || e));
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API listening on ${PORT}`));
