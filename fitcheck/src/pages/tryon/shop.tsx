@@ -302,27 +302,29 @@ export default function Shop() {
         </div>
       )}
 
-      {/* Tray (handle + carousel live together) */}
+      {/* Tray (Hide button lives inside. When hidden, show a bottom "Show" button) */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 ${
+        className={`fixed inset-x-0 bottom-0 z-30 transition-transform duration-300  ${
           trayDown ? "translate-y-full" : "translate-y-0"
         }`}
       >
-        {/* Handle that moves with the tray */}
-        <button
-          type="button"
-          onClick={() => setTrayDown((v) => !v)}
-          aria-label={
-            trayDown ? "Show product carousel" : "Hide product carousel"
-          }
-          className="absolute -top-10 left-1/2 -translate-x-1/2 rounded-full bg-black/70 text-white px-3 py-2 shadow hover:bg-black/80"
-        >
-          {/* When tray is DOWN/hidden, show Up chevron to bring it back up */}
-          {trayDown ? <ChevronUp /> : <ChevronDown />}
-        </button>
-
-        {/* Carousel */}
+        {/* Tray content */}
         <div className="p-4">
+          {/* Hide button (top-right inside the tray) */}
+          {/* Hide button ONLY when tray is visible (not down) */}
+          {!trayDown && (
+            <div className="flex items-center justify-center mb-2">
+              <button
+                type="button"
+                onClick={() => setTrayDown(true)}
+                className="rounded-full bg-black/70 text-white px-3 py-1.5 text-sm shadow hover:bg-black/80"
+              >
+                Hide
+              </button>
+            </div>
+          )}
+
+          {/* Carousel */}
           <div className="relative">
             <div
               ref={trackRef}
@@ -368,6 +370,19 @@ export default function Shop() {
           </div>
         </div>
       </div>
+
+      {/* When hidden, show a single bottom button to bring it back up */}
+      {trayDown && (
+        <div className="fixed inset-x-0 bottom-0 z-30 mb-20 flex justify-center pb-4">
+          <button
+            type="button"
+            onClick={() => setTrayDown(false)}
+            className="rounded-full bg-black/70 text-white px-4 py-2 text-sm shadow hover:bg-black/80"
+          >
+            Show recommendations
+          </button>
+        </div>
+      )}
     </div>
   );
 }
