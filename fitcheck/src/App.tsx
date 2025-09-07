@@ -15,7 +15,6 @@ import Shop from "./pages/tryon/shop";
 import YourFit from "./pages/tryon/yourfit";
 import TryOn from "./pages/tryon";
 // import TryonResult  from "./pages/tryon/result";
-import { TryOnButton } from "./pages/tryon/result";
 import Loading from "./pages/loading";
 import FullBodyGallery from "./pages/you/page";
 import { ToastHost } from "./lib/toast";
@@ -60,7 +59,6 @@ function AppRoutes() {
         <Route path="/shop" element={<Shop />} />
         <Route path="/tryon-new-user" element={<TryOnNew />} />
         <Route path="/preferences" element={<Preferences />} />
-        <Route path="/tryon/result" element={<TryOnButton></TryOnButton>} />
         <Route path="/fit/:id" element={<FitDetail />} />
       </Routes>
 
