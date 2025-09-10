@@ -5,7 +5,7 @@ import {
   useProductSearch,
 } from "@shopify/shop-minis-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { apiUrl } from "../../lib/api";
+// ⛔️ removed: import { apiUrl } from "../../lib/api";
 
 type ShopLocationState = {
   photo?: string;
@@ -13,13 +13,20 @@ type ShopLocationState = {
 };
 
 type LookMeta = {
-  productId?: string; // <-- only persist the ID for useProduct()
+  productId?: string;
   product?: string;
   merchant?: string;
   price?: number;
-  productImage?: string; // optional fallback for grids
-  productUrl?: string; // optional
+  productImage?: string;
+  productUrl?: string;
 };
+
+/* ---------------------------
+   HARDCODED API BASE
+---------------------------- */
+const API_BASE = "https://mini-tryon-production.up.railway.app"; // <-- your Railway URL
+const api = (path: string) =>
+  `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
 /* ---------------------------
    DEBUG helpers + log bridge
@@ -57,9 +64,7 @@ function emitLog(...args: any[]) {
     const msg = args.map(fmtVal).join(" ");
     const detail: LogItem = { ts: Date.now(), msg };
     window.dispatchEvent(new CustomEvent(LOG_EVENT as any, { detail }));
-  } catch {
-    /* no-op */
-  }
+  } catch {}
 }
 
 function dlog(...args: any[]) {
@@ -82,7 +87,7 @@ function dgroup(label: string, fn: () => void) {
            Component
 ---------------------------- */
 export default function Shop() {
-  const { products } = useSavedProducts(); // user's saved products (left as-is)
+  const { products } = useSavedProducts();
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
 
@@ -105,7 +110,6 @@ export default function Shop() {
       const ev = e as CustomEvent<LogItem>;
       setLogs((prev) => {
         const next = [...prev, ev.detail];
-        // keep last 200 lines
         return next.length > 200 ? next.slice(next.length - 200) : next;
       });
     };
@@ -115,10 +119,8 @@ export default function Shop() {
 
   // Startup debug
   useEffect(() => {
-    // @ts-ignore
-    const base = import.meta?.env?.VITE_API_BASE;
     dgroup("BOOT", () => {
-      dlog("VITE_API_BASE =", base || "(empty; using Vite proxy in dev)");
+      dlog("API_BASE =", API_BASE);
       dlog("state.photo =", preview(state?.photo));
       dlog("state.tryOnUrl =", preview(state?.tryOnUrl));
     });
@@ -177,17 +179,16 @@ export default function Shop() {
       clearTimeout(id)
     );
   }
-
   async function ensureHttpsViaUpload(urlOrDataUrl: string): Promise<string> {
     dgroup("UPLOAD ensureHttpsViaUpload()", () => {
       dlog("input =", preview(urlOrDataUrl));
     });
+
     if (isHttpUrl(urlOrDataUrl)) {
       dlog("already https, skip upload");
       return urlOrDataUrl;
     }
     if (!urlOrDataUrl?.startsWith("data:image/")) {
-      dlog("unsupported scheme; throwing");
       throw new Error(
         "Unsupported model image scheme (need HTTPS or data:image/*)"
       );
@@ -196,12 +197,10 @@ export default function Shop() {
     console.time("[Shop] fal-upload");
     const blob = await dataUrlToBlob(urlOrDataUrl);
     const fd = new FormData();
-    fd.append(
-      "file",
-      new File([blob], `model-${Date.now()}.jpg`, { type: blob.type })
-    );
 
-    const uploadTo = apiUrl("/api/fal-upload");
+    fd.append("file", blob, `model-${Date.now()}.jpg`);
+
+    const uploadTo = api("/api/fal-upload");
     dlog("POST", uploadTo);
 
     try {
@@ -214,8 +213,10 @@ export default function Shop() {
       const j = await up.json().catch(() => ({}));
       dlog("fal-upload json =", j);
       console.timeEnd("[Shop] fal-upload");
+
       if (!up.ok) throw new Error(j?.error || `Upload failed (${up.status})`);
       if (!j?.url) throw new Error("Upload returned no url");
+
       return j.url as string;
     } catch (e: any) {
       dlog("fal-upload error =", e?.name, e?.message);
@@ -316,7 +317,7 @@ export default function Shop() {
       const model_image = await ensureHttpsViaUpload(savedModel);
       dlog("model_image (final) =", model_image);
 
-      const endpoint = apiUrl("/api/tryon");
+      const endpoint = api("/api/tryon"); // <-- hardcoded base
       const payload = { model_image, garment_image };
       dlog("POST", endpoint, "body =", {
         model_image: preview(model_image),
@@ -395,7 +396,7 @@ export default function Shop() {
         return;
       }
       setInFlightId(p.id);
-      setLastMeta(getLightMeta(p)); // store only light meta incl productId
+      setLastMeta(getLightMeta(p));
       await runTryOnWithProduct(garment);
       setInFlightId(null);
     } else {
@@ -413,7 +414,6 @@ export default function Shop() {
     });
   }
 
-  // Keep the same empty-state screen, but only show it if no saved products AND no recommended results.
   if (!products?.length && !recommended?.length && !searchLoading) {
     dlog("Empty state: no saved products and no recommended results");
     return (
@@ -428,9 +428,6 @@ export default function Shop() {
     );
   }
 
-  /* -------------
-     RENDER
-  ---------------*/
   return (
     <div className="pb-24 pt-6 px-4 max-w-xl mx-auto">
       {bgUrl && (
@@ -439,8 +436,6 @@ export default function Shop() {
             src={bgUrl}
             alt="Your selected look"
             className="w-full h-full object-cover"
-            onLoad={() => dlog("[IMG] loaded", preview(bgUrl))}
-            onError={() => dlog("[IMG] error", preview(bgUrl))}
           />
         </div>
       )}
@@ -465,20 +460,10 @@ export default function Shop() {
           >
             Save this look
           </button>
-          {/* Clickable link to the result image */}
-          <a
-            href={bgUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs underline text-white/90 bg-black/50 rounded-full px-3 py-1"
-            title={bgUrl}
-          >
-            Open result image
-          </a>
+          <p>{bgUrl}</p>
         </div>
       )}
 
-      {/* Tray (Hide button lives inside. When hidden, show a bottom "Show" button) */}
       <div
         className={`fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 mb-18 ${
           trayDown ? "translate-y-full" : "translate-y-0"
@@ -500,7 +485,6 @@ export default function Shop() {
             </div>
           )}
 
-          {/* Carousel */}
           <div className="relative">
             <div
               ref={trackRef}
@@ -571,20 +555,12 @@ export default function Shop() {
         </div>
       )}
 
-      {/* ---------------------------
-           Floating Debug Console
-      ---------------------------- */}
+      {/* Floating Debug Console */}
       {debugOpen ? (
         <div className="fixed bottom-3 right-3 z-50 w-[min(92vw,520px)] max-h-[48vh] bg-zinc-900/90 text-zinc-100 border border-zinc-700 rounded-xl backdrop-blur-md shadow-2xl flex flex-col">
           <div className="px-3 py-2 border-b border-zinc-700 flex items-center gap-2">
             <span className="text-xs font-semibold">Debug</span>
-            <span className="text-[10px] text-zinc-400">
-              API:{" "}
-              {
-                // @ts-ignore
-                import.meta?.env?.VITE_API_BASE || "(proxy/dev)"
-              }
-            </span>
+            <span className="text-[10px] text-zinc-400">API: {API_BASE}</span>
             <span className="ml-auto" />
             <button
               className="text-[11px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
