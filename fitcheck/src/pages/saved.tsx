@@ -1,237 +1,195 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
-import { Trash2, Share2, Star, ChevronLeft, InfoIcon } from "lucide-react";
+// src/pages/Preferences.tsx
+import { ChevronLeft } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
-type SavedItem = {
-  lookId?: string; // unique for this saved look
-  url: string; // try-on image
-  productId?: string; // <-- for useProduct()
-  product?: string;
-  merchant?: string;
-  price?: number;
-  favorite?: boolean;
-  ts?: number;
-  productImage?: string;
-  productUrl?: string;
-};
-
-function parseSaved(raw: string | null): SavedItem[] {
-  if (!raw) return [];
-  try {
-    const json = JSON.parse(raw);
-    return Array.isArray(json) ? json.filter((x) => x?.url) : [];
-  } catch {
-    return [];
-  }
-}
-const save = (items: SavedItem[]) =>
-  localStorage.setItem("savedPhotos", JSON.stringify(items));
-
-function ensureLookIds(items: SavedItem[]) {
-  let touched = false;
-  const out = items.map((x) =>
-    x.lookId ? x : { ...x, lookId: crypto.randomUUID() }
-  );
-  if (out.length && out.some((x, i) => items[i]?.lookId !== x.lookId)) {
-    touched = true;
-  }
-  if (touched) save(out);
-  return out;
+interface PreferenceSection {
+  title: string;
+  options: string[];
+  multiSelect: boolean;
 }
 
-export default function Saved() {
+const preferenceSections: PreferenceSection[] = [
+  {
+    title: "Occasion",
+    options: [
+      "Concert",
+      "Vacation",
+      "Date Night",
+      "Formal Dinner",
+      "Graduation",
+      "Birthday",
+      "Wedding/Engagement",
+    ],
+    multiSelect: false,
+  },
+  {
+    title: "Vibe",
+    options: [
+      "Elegant & Classy",
+      "Soft",
+      "Bold",
+      "Minimal",
+      "Chic",
+      "Trendy",
+      "Vintage",
+      "Bohemian",
+      "Active",
+    ],
+    multiSelect: false,
+  },
+  {
+    title: "Color Season",
+    options: [
+      "True Winter",
+      "True Spring",
+      "True Summer",
+      "Soft Summer",
+      "Bright Spring",
+      "True Autumn",
+      "Light Spring",
+      "Dark Winter",
+      "Don't know",
+    ],
+    multiSelect: false,
+  },
+  // NEW
+  {
+    title: "Categories to browse",
+    options: Object.keys(BUCKETS),
+    multiSelect: true,
+  },
+];
+
+export default function Preferences() {
   const navigate = useNavigate();
-  const { state } = useLocation() as {
-    state?: { photo?: string; meta?: Partial<SavedItem> };
-  };
-  const [items, setItems] = useState<SavedItem[]>([]);
-  const [tab, setTab] = useState<"all" | "starred">("all");
+  const { state } = useLocation() as { state?: { photo?: string } };
+  const [photo, setPhoto] = useState<string | null>(state?.photo ?? null);
 
   useEffect(() => {
-    const existing = ensureLookIds(
-      parseSaved(localStorage.getItem("savedPhotos"))
-    );
-    let merged = existing;
-
-    if (state?.photo && !existing.some((i) => i.url === state.photo)) {
-      const incoming: SavedItem = {
-        lookId: crypto.randomUUID(),
-        url: state.photo,
-        ts: Date.now(),
-        favorite: !!state?.meta?.favorite,
-        productId: state?.meta?.productId, // <-- saved here
-        product: state?.meta?.product,
-        merchant: state?.meta?.merchant,
-        price: state?.meta?.price,
-        productImage: state?.meta?.productImage,
-        productUrl: state?.meta?.productUrl,
-      };
-      merged = [incoming, ...existing];
-      save(merged);
+    if (state?.photo) localStorage.setItem("selectedPhoto", state.photo);
+    if (!state?.photo) {
+      const saved = localStorage.getItem("selectedPhoto");
+      if (saved) setPhoto(saved);
     }
-    setItems(merged);
   }, [state?.photo]);
 
-  const allCount = items.length;
-  const starredCount = useMemo(
-    () => items.filter((x) => x.favorite).length,
-    [items]
-  );
-  const visibleItems = tab === "all" ? items : items.filter((x) => x.favorite);
-  const titleCount = useMemo(
-    () =>
-      visibleItems.length === 1 ? "1 item" : `${visibleItems.length} items`,
-    [visibleItems.length]
-  );
+  const [selections, setSelections] = useState<Record<string, string[]>>({
+    Occasion: ["Wedding/Engagement"],
+    Vibe: [],
+    "Color Season": [],
+    "Categories to browse": ["Dresses", "Tops"],
+  });
 
-  function deleteByUrl(url: string) {
-    const next = items.filter((x) => x.url !== url);
-    setItems(next);
-    save(next);
-  }
-  function toggleFavoriteByUrl(url: string) {
-    const next = items.map((x) =>
-      x.url === url ? { ...x, favorite: !x.favorite } : x
-    );
-    setItems(next);
-    save(next);
-  }
-  async function shareItem(url: string) {
-    try {
-      if (navigator.share)
-        await navigator.share({
-          title: "Check out my outfit",
-          text: "Here's a look I saved!",
-          url,
-        });
-      else {
-        await navigator.clipboard.writeText(url);
-        alert("Link copied to clipboard!");
+  const handleBadgeClick = (
+    section: string,
+    option: string,
+    multi: boolean
+  ) => {
+    setSelections((prev) => {
+      const current = prev[section] || [];
+      if (multi) {
+        return current.includes(option)
+          ? { ...prev, [section]: current.filter((i) => i !== option) }
+          : { ...prev, [section]: [...current, option] };
       }
-    } catch {}
-  }
+      return { ...prev, [section]: [option] };
+    });
+  };
+
+  const isSelected = (section: string, option: string) =>
+    (selections[section] || []).includes(option);
+
+  const searchPlan = useMemo(() => {
+    const occasion = selections["Occasion"]?.[0];
+    const vibe = selections["Vibe"]?.[0];
+    const colorSeason = selections["Color Season"]?.[0];
+    const budget = selections["Budget"]?.[0];
+    const categories = (selections["Categories to browse"] ||
+      []) as BucketKey[];
+    return buildSearchPlan({ occasion, vibe, colorSeason, budget, categories });
+  }, [selections]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      {/* top bar + tabs (same as before)… */}
-      <div className="sticky top-0 z-20 bg-zinc-950/90 backdrop-blur border-b border-zinc-800">
-        <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button
-              className="px-3 py-1 rounded-full text-sm bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800"
-              onClick={() => navigate(-1)}
-            >
-              <ChevronLeft />
-            </button>
-            <div className="font-semibold tracking-wide text-white">
-              Fit Vault
-            </div>
+    <div className="min-h-screen bg-gray-50 p-4">
+      {/* Header */}
+      <div className="flex items-center mb-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="mr-4 p-2 hover:bg-gray-200 rounded-full transition-colors"
+        >
+          <ChevronLeft />
+        </button>
+        <h1 className="text-2xl font-semibold">Preferences</h1>
+        <div className="ml-auto text-sm text-gray-500">
+          {photo ? "Photo added" : "Add a full body photo to continue"}
+        </div>
+      </div>
 
-            <div className=" overflow-hidden ring-1 ring-zinc-700">
-              <InfoIcon />
+      {/* Sections */}
+      <div className="space-y-8">
+        {preferenceSections.map((section) => (
+          <div key={section.title}>
+            <h2 className="text-lg font-medium mb-4">{section.title}</h2>
+            <div className="flex flex-wrap gap-3">
+              {section.options.map((option) => (
+                <button
+                  key={option}
+                  onClick={() =>
+                    handleBadgeClick(section.title, option, section.multiSelect)
+                  }
+                  className="transition-all duration-200 hover:scale-105 active:scale-95"
+                >
+                  <div
+                    className={`px-4 py-3 rounded-full text-sm font-medium ${
+                      isSelected(section.title, option)
+                        ? "bg-black text-white shadow-md"
+                        : "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300"
+                    } min-h-[44px] flex items-center justify-center`}
+                  >
+                    {option}
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-center">
-            <div className="inline-flex rounded-full bg-zinc-900 p-1 border border-zinc-800">
-              <button
-                onClick={() => setTab("all")}
-                className={
-                  "px-3 py-1.5 rounded-full text-sm " +
-                  (tab === "all"
-                    ? "bg-zinc-800"
-                    : "text-zinc-400 hover:text-zinc-200")
-                }
+        ))}
+
+        {/* Plan preview (optional) */}
+        <div className="mt-4">
+          <div className="text-sm text-gray-600 mb-2">We’ll start with:</div>
+          <div className="flex flex-wrap gap-2">
+            {searchPlan.seeds.slice(0, 6).map((s) => (
+              <span
+                key={s.query}
+                className="px-3 py-1 rounded-full text-xs bg-white border"
               >
-                All<span className="ml-1 text-zinc-500">({allCount})</span>
-              </button>
-              <button
-                onClick={() => setTab("starred")}
-                className={
-                  "px-3 py-1.5 rounded-full text-sm " +
-                  (tab === "starred"
-                    ? "bg-zinc-800"
-                    : "text-zinc-400 hover:text-zinc-200")
-                }
-              >
-                Starred
-                <span className="ml-1 text-zinc-500">({starredCount})</span>
-              </button>
-            </div>
+                {s.query}
+              </span>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* grid */}
-      <div className="max-w-md mx-auto px-4 pt-4 pb-20">
-        {visibleItems.length === 0 ? (
-          <div className="text-center text-zinc-400 mt-20">
-            {tab === "all" ? "No fit saved yet." : "No starred fit yet."}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {visibleItems.map((it) => (
-              <div
-                key={it.lookId ?? it.url}
-                className="relative rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900 cursor-pointer"
-                onClick={() =>
-                  navigate(`/fit/${encodeURIComponent(it.lookId ?? it.url)}`)
-                }
-                title={it.product ?? "Open fit"}
-              >
-                <img
-                  src={it.url}
-                  alt={it.product ?? "Saved Look"}
-                  className="w-full aspect-[3/5] object-cover"
-                  loading="lazy"
-                />
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavoriteByUrl(it.url);
-                  }}
-                  className="absolute top-2 right-2 p-2 rounded-full bg-zinc-900/80 border border-zinc-700 hover:bg-zinc-800/90"
-                  aria-label={it.favorite ? "Unstar" : "Star"}
-                >
-                  <Star
-                    size={16}
-                    className={
-                      it.favorite
-                        ? "text-amber-400 fill-amber-400"
-                        : "text-zinc-300"
-                    }
-                  />
-                </button>
-                <div className="absolute bottom-2 left-2 right-2 flex justify-between">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteByUrl(it.url);
-                    }}
-                    className="p-2 rounded-full bg-zinc-900/80 border border-zinc-700"
-                  >
-                    {" "}
-                    <Trash2 size={16} />{" "}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      shareItem(it.url);
-                    }}
-                    className="p-2 rounded-full bg-zinc-900/80 border border-zinc-700"
-                  >
-                    {" "}
-                    <Share2 size={16} />{" "}
-                  </button>
-                </div>
-                {(it.product || it.merchant) && (
-                  <div className="absolute top-2 left-2 px-2 py-1 max-w-[15vh] truncate rounded-full text-xs bg-zinc-900/80 border border-zinc-700">
-                    {it.product ?? it.merchant}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Save */}
+      <div className="mt-12 mb-8">
+        <button
+          onClick={() => {
+            try {
+              sessionStorage.setItem(
+                "fc:searchPlan",
+                JSON.stringify(searchPlan)
+              );
+            } catch {}
+            // Send directly to /shop; if you have a /loading screen, pass it there instead and forward along.
+            navigate("/loading", { state: { photo, searchPlan } });
+          }}
+          className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50"
+          disabled={!photo}
+        >
+          Save and Next
+        </button>
       </div>
     </div>
   );
