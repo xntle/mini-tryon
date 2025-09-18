@@ -21,27 +21,35 @@ const app = express();
    CORS (reflect origin in dev or allowlist via env)
    FRONTEND_ORIGIN can be comma-separated origins
 ---------------------------- */
+app.use((_, res, next) => {
+  res.setHeader("Vary", "Origin");
+  next();
+});
+
 const allowedOrigins = [
-  /^http:\/\/localhost:\d+$/, // Shop Mini runtime (required)
-  "https://mini-tryon-production.up.railway.app",
-  "https://cdn.fashn.ai", // your API itself (optional)
-  // add any other internal callers if needed
+  /^http:\/\/localhost:\d+$/, // Shop Mini dev webview (random localhost port)
+  /^http:\/\/127\.0\.0\.1:\d+$/, // alt localhost
+  // Add real web origins that will host your Mini (if any), e.g.:
+  // "https://your-prod-mini-host.example"
 ];
 
+// CORS
 app.use(
   cors({
     origin(origin, cb) {
-      if (!origin) return cb(null, true); // allow server-to-server & curl without Origin
+      // allow curl/Postman/server-to-server (no Origin) and some webviews that send literal "null"
+      if (!origin || origin === "null") return cb(null, true);
       const ok = allowedOrigins.some((o) =>
         typeof o === "string" ? o === origin : o.test(origin)
       );
-      return ok ? cb(null, true) : cb(new Error("Not allowed by CORS"));
+      cb(ok ? null : new Error("Not allowed by CORS"), ok);
     },
-    methods: ["POST", "OPTIONS"],
+    methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Origin"],
+    optionsSuccessStatus: 204,
+    maxAge: 86400,
   })
 );
-
 app.use(express.json({ limit: "16mb" })); // bump a little for data URLs
 app.use(express.urlencoded({ extended: true, limit: "16mb" }));
 
