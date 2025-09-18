@@ -309,7 +309,7 @@ export default function Shop() {
       if (!savedModel) {
         dlog("NO SAVED MODEL → redirect to /preferences");
         setErr("Add a full body photo first.");
-        navigate("/preferences");
+        // navigate("/preferences");
         return;
       }
 

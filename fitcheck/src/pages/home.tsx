@@ -7,7 +7,7 @@ type ShopLocationState = {
   tryOnUrl?: string; // optional prior try-on from Home
 };
 
-export default function Shop() {
+export default function Home() {
   const { products } = useSavedProducts();
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
@@ -36,7 +36,7 @@ export default function Shop() {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch("/api/tryon", {
+      const r = await fetch("mini-tryon-production.up.railway.app/api/tryon", {
         // if no dev proxy, use: "http://localhost:3000/api/tryon"
         method: "POST",
         headers: { "Content-Type": "application/json" },
