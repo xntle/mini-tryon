@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import { ExternalLink, Star, Trash2, Share2 } from "lucide-react";
 import { useProduct, ProductLink } from "@shopify/shop-minis-react";
 

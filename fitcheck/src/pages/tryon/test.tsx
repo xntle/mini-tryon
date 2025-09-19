@@ -4,7 +4,7 @@ import {
   ProductCard,
   useProductSearch,
 } from "@shopify/shop-minis-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router";
 import { apiUrl } from "../../lib/api";
 
 type ShopLocationState = {

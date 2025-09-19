@@ -1,7 +1,7 @@
 // src/pages/Preferences.tsx
 import { ChevronLeft } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router";
 import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
 interface PreferenceSection {

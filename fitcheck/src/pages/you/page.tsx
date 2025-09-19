@@ -12,7 +12,7 @@ import {
   FileQuestion,
   InfoIcon,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 type SavedItem = { id: string; url: string; ts: number };
 

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router";
 
 type ShopLocationState = {
   photo?: string; // fallback bg if you want it

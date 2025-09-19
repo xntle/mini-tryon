@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { GalleryHorizontalEnd, Home, SquareUserRound } from "lucide-react";
 import PhotoGalleryButton from "../components/GalleryButton";
 

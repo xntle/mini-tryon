@@ -4,7 +4,7 @@
   "privacy_policy_url": "https://example.com/privacy",
   "terms_url": "https://example.com/terms",
   "trusted_domains": [
-    "https://mini-tryon-production.up.railway.app",
+    "mini-tryon-production.up.railway.app",
     "cdn.fashn.ai"
   ],
   "handle": "fitcheck-ag4o"
