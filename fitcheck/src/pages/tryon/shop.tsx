@@ -21,10 +21,7 @@ type LookMeta = {
   productUrl?: string;
 };
 
-/* ---------------------------
-   HARDCODED API BASE
----------------------------- */
-const API_BASE = "https://mini-tryon-production.up.railway.app"; // <-- your Railway URL
+const API_BASE = import.meta.env.VITE_API_BASE;
 const api = (path: string) =>
   `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
@@ -465,8 +462,8 @@ export default function Shop() {
       )}
 
       <div
-        className={`fixed inset-x-0 bottom-0 z-30 transition-transform duration-300 mb-18 ${
-          trayDown ? "translate-y-full" : "translate-y-0"
+        className={`fixed inset-x-0 bottom-0 z-0 transition-transform duration-300 mb-18 ${
+          trayDown ? "translate-y-[120%]" : "translate-y-0"
         }`}
       >
         <div className="p-4">
@@ -548,7 +545,7 @@ export default function Shop() {
               dlog("Tray: show");
               setTrayDown(false);
             }}
-            className="rounded-full bg-black/70 text-white px-4 py-2 text-sm shadow hover:bg-black/80"
+            className="rounded-full bg-black/70 text-white px-4 py-2  text-sm shadow hover:bg-black/80"
           >
             Show recommendations
           </button>
@@ -556,7 +553,7 @@ export default function Shop() {
       )}
 
       {/* Floating Debug Console */}
-      {debugOpen ? (
+      {/* {debugOpen ? (
         <div className="fixed bottom-3 right-3 z-50 w-[min(92vw,520px)] max-h-[48vh] bg-zinc-900/90 text-zinc-100 border border-zinc-700 rounded-xl backdrop-blur-md shadow-2xl flex flex-col">
           <div className="px-3 py-2 border-b border-zinc-700 flex items-center gap-2">
             <span className="text-xs font-semibold">Debug</span>
@@ -613,7 +610,7 @@ export default function Shop() {
         >
           🐞
         </button>
-      )}
+      )} */}
     </div>
   );
 }
