@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocation, Link, Navigate } from "react-router-dom";
+import { useLocation, Link, Navigate } from "react-router";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
 
 type State = {
