@@ -12,15 +12,23 @@ interface PreferenceSection {
 
 const preferenceSections: PreferenceSection[] = [
   {
+    title: "Gender",
+    options: ["Women", "Men", "Unisex"],
+    multiSelect: false,
+  },
+  {
     title: "Occasion",
     options: [
-      "Concert",
-      "Vacation",
+      "Wedding/Engagement",
       "Date Night",
       "Formal Dinner",
+      "Concert",
+      "Vacation",
+      "Business Meeting",
       "Graduation",
       "Birthday",
-      "Wedding/Engagement",
+      "Casual Outing",
+      "Party",
     ],
     multiSelect: false,
   },
@@ -76,6 +84,7 @@ export default function Preferences() {
   }, [state?.photo]);
 
   const [selections, setSelections] = useState<Record<string, string[]>>({
+    Gender: ["Women"],
     Occasion: ["Wedding/Engagement"],
     Vibe: [],
     "Color Season": [],
@@ -176,14 +185,13 @@ export default function Preferences() {
       <div className="mt-12 mb-8">
         <button
           onClick={() => {
-            try {
-              sessionStorage.setItem(
-                "fc:searchPlan",
-                JSON.stringify(searchPlan)
-              );
-            } catch {}
-            // Send directly to /shop; if you have a /loading screen, pass it there instead and forward along.
-            navigate("/loading", { state: { photo, searchPlan } });
+
+            console.log("Saving preferences:", selections);
+            // Save preferences to localStorage for search functionality
+            localStorage.setItem('userPreferences', JSON.stringify(selections));
+            // forward photo to /shop so it can be used as bg
+            navigate("/loading", { state: { photo } });
+
           }}
           className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50"
           disabled={!photo}
