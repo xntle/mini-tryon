@@ -1,6 +1,8 @@
+// src/pages/Preferences.tsx
 import { ChevronLeft } from "lucide-react";
-import React, { useRef, useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router";
+import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
 interface PreferenceSection {
   title: string;
@@ -60,10 +62,11 @@ const preferenceSections: PreferenceSection[] = [
     ],
     multiSelect: false,
   },
+  // NEW
   {
-    title: "Budget",
-    options: ["<$50", "$50-100", "$100-250", "$250-500", "$500+"],
-    multiSelect: false,
+    title: "Categories to browse",
+    options: Object.keys(BUCKETS),
+    multiSelect: true,
   },
 ];
 
@@ -72,7 +75,6 @@ export default function Preferences() {
   const { state } = useLocation() as { state?: { photo?: string } };
   const [photo, setPhoto] = useState<string | null>(state?.photo ?? null);
 
-  // persist across refreshes (optional)
   useEffect(() => {
     if (state?.photo) localStorage.setItem("selectedPhoto", state.photo);
     if (!state?.photo) {
@@ -86,28 +88,37 @@ export default function Preferences() {
     Occasion: ["Wedding/Engagement"],
     Vibe: [],
     "Color Season": [],
-    Budget: [],
+    "Categories to browse": ["Dresses", "Tops"],
   });
 
   const handleBadgeClick = (
     section: string,
     option: string,
-    multiSelect: boolean
+    multi: boolean
   ) => {
     setSelections((prev) => {
       const current = prev[section] || [];
-      if (multiSelect) {
+      if (multi) {
         return current.includes(option)
           ? { ...prev, [section]: current.filter((i) => i !== option) }
           : { ...prev, [section]: [...current, option] };
-      } else {
-        return { ...prev, [section]: [option] };
       }
+      return { ...prev, [section]: [option] };
     });
   };
 
-  const isBadgeSelected = (section: string, option: string) =>
+  const isSelected = (section: string, option: string) =>
     (selections[section] || []).includes(option);
+
+  const searchPlan = useMemo(() => {
+    const occasion = selections["Occasion"]?.[0];
+    const vibe = selections["Vibe"]?.[0];
+    const colorSeason = selections["Color Season"]?.[0];
+    const budget = selections["Budget"]?.[0];
+    const categories = (selections["Categories to browse"] ||
+      []) as BucketKey[];
+    return buildSearchPlan({ occasion, vibe, colorSeason, budget, categories });
+  }, [selections]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -120,9 +131,12 @@ export default function Preferences() {
           <ChevronLeft />
         </button>
         <h1 className="text-2xl font-semibold">Preferences</h1>
+        <div className="ml-auto text-sm text-gray-500">
+          {photo ? "Photo added" : "Add a full body photo to continue"}
+        </div>
       </div>
 
-      {/* Preference Sections */}
+      {/* Sections */}
       <div className="space-y-8">
         {preferenceSections.map((section) => (
           <div key={section.title}>
@@ -137,8 +151,8 @@ export default function Preferences() {
                   className="transition-all duration-200 hover:scale-105 active:scale-95"
                 >
                   <div
-                    className={`px-4 py-3 rounded-full text-sm font-medium transition-all duration-200 ${
-                      isBadgeSelected(section.title, option)
+                    className={`px-4 py-3 rounded-full text-sm font-medium ${
+                      isSelected(section.title, option)
                         ? "bg-black text-white shadow-md"
                         : "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300"
                     } min-h-[44px] flex items-center justify-center`}
@@ -150,20 +164,37 @@ export default function Preferences() {
             </div>
           </div>
         ))}
+
+        {/* Plan preview (optional) */}
+        <div className="mt-4">
+          <div className="text-sm text-gray-600 mb-2">We’ll start with:</div>
+          <div className="flex flex-wrap gap-2">
+            {searchPlan.seeds.slice(0, 6).map((s) => (
+              <span
+                key={s.query}
+                className="px-3 py-1 rounded-full text-xs bg-white border"
+              >
+                {s.query}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Save Button */}
+      {/* Save */}
       <div className="mt-12 mb-8">
         <button
           onClick={() => {
+
             console.log("Saving preferences:", selections);
             // Save preferences to localStorage for search functionality
             localStorage.setItem('userPreferences', JSON.stringify(selections));
             // forward photo to /shop so it can be used as bg
             navigate("/loading", { state: { photo } });
+
           }}
-          className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-          disabled={!photo} // require a photo before continuing (optional)
+          className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50"
+          disabled={!photo}
         >
           Save and Next
         </button>

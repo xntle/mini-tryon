@@ -18,13 +18,16 @@ export default function TryOn() {
     <div className="min-h-screen w-full grid place-items-center">
       <div className="h-fill w-fill overflow-hidden rounded-[40px] shadow-2xl ">
         {/* Background image */}
-        <img
-          src="https://images.unsplash.com/photo-1516826957135-700dedea698c?q=80&w=1600&auto=format&fit=crop"
-          alt="Outfit"
-          className="absolute inset-0 h-full w-full object-cover"
+        <video
+          className="absolute inset-0 h-full w-full object-cover -z-10"
+          src="/output.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
         />
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
 
         <div
           className={`absolute bottom-30 right-6 left-6 text-white z-10

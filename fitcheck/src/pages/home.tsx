@@ -1,13 +1,13 @@
 import { useState, useRef } from "react";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router";
 
 type ShopLocationState = {
   photo?: string; // fallback bg if you want it
   tryOnUrl?: string; // optional prior try-on from Home
 };
 
-export default function Shop() {
+export default function Home() {
   const { products } = useSavedProducts();
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
@@ -36,7 +36,7 @@ export default function Shop() {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch("/api/tryon", {
+      const r = await fetch("mini-tryon-production.up.railway.app/api/tryon", {
         // if no dev proxy, use: "http://localhost:3000/api/tryon"
         method: "POST",
         headers: { "Content-Type": "application/json" },

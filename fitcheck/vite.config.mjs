@@ -9,7 +9,10 @@ export default defineConfig({
     include: ["@shopify/shop-minis-react"],
   },
   server: {
-    proxy: { "/api": "http://localhost:3000" },
+    "/api": {
+      target: "https://mini-tryon-production.up.railway.app",
+      changeOrigin: true,
+    },
     changeOrigin: true,
   },
 });

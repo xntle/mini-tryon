@@ -8,7 +8,7 @@
     "start": "shop-minis dev"
   },
   "devDependencies": {
-    "@shopify/shop-minis-cli": "^0.0.175",
+    "@shopify/shop-minis-cli": "0.0.187",
     "@tailwindcss/vite": "^4.1.8",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
@@ -17,10 +17,9 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@fal-ai/client": "^1.6.2",
-    "@shopify/shop-minis-react": "0.0.30",
-    "framer-motion": "^12.23.12",
-    "lucide-react": "^0.539.0",
+    "@fal-ai/client": "1.6.0",
+    "@shopify/shop-minis-react": "0.1.1",
+    "lucide-react": "0.513.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-router-dom": "^7.8.0",

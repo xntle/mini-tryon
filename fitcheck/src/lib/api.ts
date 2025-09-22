@@ -1,6 +1,15 @@
 // src/lib/api.ts
-export const API_BASE = import.meta.env.VITE_API_BASE || "";
-// In dev, leave VITE_API_BASE empty and use a Vite proxy.
-// In prod, set VITE_API_BASE to your Railway URL, e.g. https://fitcheck-api.up.railway.app
+const RAW_BASE = (import.meta.env.VITE_API_BASE || "")
+  .trim()
+  .replace(/\/+$/, "");
 
-export const apiUrl = (path: string) => `${API_BASE}${path}`;
+function normalizeBase(b: string) {
+  if (!b) return "";
+  return /^https?:\/\//i.test(b) ? b : `https://${b}`; // add https if missing
+}
+
+export function apiUrl(path: string) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const base = normalizeBase(RAW_BASE);
+  return base ? `${base}${p}` : p; // dev: returns /api/..., prod: https://host/api/...
+}
