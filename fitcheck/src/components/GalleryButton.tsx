@@ -29,6 +29,119 @@ function getSavedFullBodyUrl(): string | null {
   }
 }
 
+/* ---------- helpers copied from BackstageFullBodyLocal ---------- */
+
+type SavedItem = { id: string; url: string; ts: number };
+
+function approxBytesOfDataUrl(dataUrl: string) {
+  const i = dataUrl.indexOf(",");
+  const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+  return Math.floor((b64.length * 3) / 4);
+}
+
+function compressDataUrl(
+  dataUrl: string,
+  maxW = 1200,
+  maxH = 1800,
+  quality = 0.82
+): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      const r = Math.min(maxW / width, maxH / height, 1);
+      const w = Math.round(width * r);
+      const h = Math.round(height * r);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, w, h);
+      const out = canvas.toDataURL("image/jpeg", quality);
+      resolve(out);
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function loadAll(): SavedItem[] {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    const arr: any[] = raw ? JSON.parse(raw) : [];
+    // migrate old entries without id
+    const withIds: SavedItem[] = arr.map((x) =>
+      "id" in x
+        ? x
+        : { id: crypto.randomUUID(), url: x.url, ts: x.ts ?? Date.now() }
+    );
+    if (withIds.length !== arr.length || arr.some((x) => !("id" in x))) {
+      localStorage.setItem(STORE_KEY, JSON.stringify(withIds));
+    }
+    return withIds;
+  } catch {
+    return [];
+  }
+}
+
+function saveAll(next: SavedItem[], nextCurrent?: string | null) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(next));
+  if (nextCurrent) {
+    localStorage.setItem(CURRENT_KEY, nextCurrent);
+  } else {
+    localStorage.removeItem(CURRENT_KEY);
+  }
+}
+
+/** Adds dataUrl to STORE_KEY (with dedupe + optional compression),
+ * sets CURRENT_KEY to the added url, and returns the final (maybe-compressed) url. */
+async function addDataUrlAndSetCurrent(dataUrl: string): Promise<string> {
+  let items = loadAll();
+
+  // dedupe
+  if (items.some((x) => x.url === dataUrl)) {
+    saveAll(items, dataUrl);
+    return dataUrl;
+  }
+
+  // compress if > ~2MB
+  if (approxBytesOfDataUrl(dataUrl) > 2_000_000) {
+    dataUrl = await compressDataUrl(dataUrl, 1200, 1800, 0.82);
+  }
+
+  const rec: SavedItem = {
+    id: crypto.randomUUID(),
+    url: dataUrl,
+    ts: Date.now(),
+  };
+
+  try {
+    const next = [rec, ...items];
+    saveAll(next, rec.url);
+    return rec.url;
+  } catch {
+    // progressive smaller attempts
+    const steps = [
+      { w: 1000, h: 1500, q: 0.75 },
+      { w: 800, h: 1200, q: 0.7 },
+      { w: 600, h: 900, q: 0.65 },
+    ];
+    for (const s of steps) {
+      const compact = await compressDataUrl(rec.url, s.w, s.h, s.q);
+      const smaller: SavedItem = { ...rec, url: compact };
+      try {
+        const next = [smaller, ...items];
+        saveAll(next, smaller.url);
+        return smaller.url;
+      } catch {}
+    }
+    throw new Error("Storage is full or blocked");
+  }
+}
+
+/* ---------------------------------------------------------------- */
+
 export default function PhotoGalleryButton({
   open,
   onOpenChange,
@@ -54,25 +167,44 @@ export default function PhotoGalleryButton({
   function handleFabClick() {
     const saved = getSavedFullBodyUrl();
     if (saved) {
-      // jump straight to preferences using the saved full-body photo
       navigate("/preferences", { state: { photo: saved } });
       return;
     }
+    // If you prefer the /you redirect when none saved, swap next line:
+    // navigate("/you"); return;
     applyOpen(true);
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
-      if (onSelected) onSelected(file, dataUrl);
-      navigate("/preferences", { state: { photo: dataUrl } });
+    reader.onload = async () => {
+      try {
+        let dataUrl = String(reader.result);
+        // persist using the same logic as Backstage
+        const finalUrl = await addDataUrlAndSetCurrent(dataUrl);
+        // allow external listeners too
+        if (onSelected) onSelected(file, finalUrl);
+        // continue to preferences with the saved (maybe-compressed) URL
+        navigate("/preferences", { state: { photo: finalUrl } });
+      } catch (err) {
+        console.error("[PhotoGalleryButton] save error:", err);
+        // fallback: still navigate with raw dataUrl if available
+        if (reader.result) {
+          navigate("/preferences", { state: { photo: String(reader.result) } });
+        }
+      } finally {
+        applyOpen(false);
+      }
+    };
+    reader.onerror = () => {
+      console.error("[PhotoGalleryButton] read error");
+      applyOpen(false);
     };
     reader.readAsDataURL(file);
-    e.target.value = "";
-    applyOpen(false);
   }
 
   return (
@@ -83,7 +215,7 @@ export default function PhotoGalleryButton({
             key="fab"
             layoutId="fab"
             onClick={handleFabClick}
-            aria-label="Open image search"
+            aria-label="Open image picker"
             className="inline-grid place-items-center h-14 w-14 rounded-full bg-black/10 backdrop-blur-md backdrop-saturate-150 text-white shadow-xl active:scale-95"
             transition={{ type: "spring", stiffness: 400, damping: 28 }}
           >

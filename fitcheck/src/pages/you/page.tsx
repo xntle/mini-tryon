@@ -283,7 +283,9 @@ export default function BackstageFullBodyLocal() {
                 className="max-h-[46vh] w-full object-contain"
               />
             ) : (
-              <div className="text-zinc-400">No photo yet</div>
+              <div className="text-zinc-400">
+                Add a photo and press "+" at the bottom to start!{" "}
+              </div>
             )}
           </div>
 
