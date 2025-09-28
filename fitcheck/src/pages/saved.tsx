@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Trash2, Share2, Star, ChevronLeft, InfoIcon } from "lucide-react";
+import { Trash2, Share2, Star, ChevronLeft, InfoIcon, X } from "lucide-react";
 
 type SavedItem = {
   lookId?: string; // unique for this saved look
@@ -47,6 +47,10 @@ export default function Saved() {
   const [items, setItems] = useState<SavedItem[]>([]);
   const [tab, setTab] = useState<"all" | "starred">("all");
 
+  // info modal state
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoStep, setInfoStep] = useState<0 | 1>(0);
+
   useEffect(() => {
     const existing = ensureLookIds(
       parseSaved(localStorage.getItem("savedPhotos"))
@@ -71,6 +75,15 @@ export default function Saved() {
     }
     setItems(merged);
   }, [state?.photo]);
+
+  // close info modal with ESC
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setInfoOpen(false);
+    }
+    if (infoOpen) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [infoOpen]);
 
   const allCount = items.length;
   const starredCount = useMemo(
@@ -113,7 +126,7 @@ export default function Saved() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      {/* top bar + tabs (same as before)… */}
+      {/* top bar + tabs */}
       <div className="sticky top-0 z-20 bg-zinc-950/90 backdrop-blur border-b border-zinc-800">
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -127,9 +140,17 @@ export default function Saved() {
               Fit Vault
             </div>
 
-            <div className=" overflow-hidden ring-1 ring-zinc-700">
+            {/* Info button */}
+            <button
+              onClick={() => {
+                setInfoStep(0);
+                setInfoOpen(true);
+              }}
+              className="p-2 rounded-full bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 text-zinc-200"
+              aria-label="How Fit Vault works"
+            >
               <InfoIcon />
-            </div>
+            </button>
           </div>
           <div className="mt-3 flex items-center justify-center">
             <div className="inline-flex rounded-full bg-zinc-900 p-1 border border-zinc-800">
@@ -210,8 +231,7 @@ export default function Saved() {
                     }}
                     className="p-2 rounded-full bg-zinc-900/80 border border-zinc-700"
                   >
-                    {" "}
-                    <Trash2 size={16} />{" "}
+                    <Trash2 size={16} />
                   </button>
                   <button
                     onClick={(e) => {
@@ -220,8 +240,7 @@ export default function Saved() {
                     }}
                     className="p-2 rounded-full bg-zinc-900/80 border border-zinc-700"
                   >
-                    {" "}
-                    <Share2 size={16} />{" "}
+                    <Share2 size={16} />
                   </button>
                 </div>
                 {(it.product || it.merchant) && (
@@ -234,6 +253,125 @@ export default function Saved() {
           </div>
         )}
       </div>
+
+      {/* Info popup (two-step with Back page) */}
+      {infoOpen && (
+        <div
+          className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-6"
+          onClick={() => setInfoOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-sm pointer-events-auto rounded-2xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-md text-zinc-100 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                {infoStep === 1 ? (
+                  <button
+                    onClick={() => setInfoStep(0)}
+                    className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
+                    aria-label="Back"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                ) : (
+                  <span className="p-2 -m-2 opacity-0">
+                    <ChevronLeft className="h-5 w-5" />
+                  </span>
+                )}
+                <div className="font-medium">
+                  {infoStep === 0 ? "How Fit Vault works" : "Tips & privacy"}
+                </div>
+              </div>
+              <button
+                onClick={() => setInfoOpen(false)}
+                className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            {infoStep === 0 ? (
+              <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
+                <ul className="list-disc pl-5 space-y-2 text-zinc-300">
+                  <li>Tap a card to open that fit’s detail page.</li>
+                  <li>
+                    Use <span className="font-medium">★ Star</span> to pin looks
+                    to the <span className="font-medium">Starred</span> tab.
+                  </li>
+                  <li>
+                    <span className="font-medium">Share</span> copies the link
+                    (or uses native share if available).
+                  </li>
+                  <li>
+                    <span className="font-medium">Delete</span> removes the fit
+                    from this device.
+                  </li>
+                  <li>
+                    If you see a pill label, that’s the product or merchant tied
+                    to the look.
+                  </li>
+                </ul>
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => setInfoOpen(false)}
+                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                  >
+                    Got it
+                  </button>
+                  <button
+                    onClick={() => setInfoStep(1)}
+                    className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
+                  >
+                    Tips & privacy
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
+                <p className="text-zinc-300">
+                  Saved fits are stored in your browser under{" "}
+                  <code className="px-1 rounded bg-zinc-800 border border-zinc-700">
+                    localStorage
+                  </code>{" "}
+                  as <code>savedPhotos</code>. We keep the images/links here so
+                  they stay on your device unless you clear them.
+                </p>
+                <ul className="list-disc pl-5 space-y-2 text-zinc-300">
+                  <li>Clearing browser data will remove your saved fits.</li>
+                  <li>
+                    If a saved fit uses a link, the image may live on that
+                    remote server; we only store the URL.
+                  </li>
+                  <li>
+                    To tidy up, delete duplicates and star your favorites for
+                    quick access.
+                  </li>
+                </ul>
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => setInfoStep(0)}
+                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setInfoOpen(false)}
+                    className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

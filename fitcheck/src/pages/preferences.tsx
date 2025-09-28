@@ -185,13 +185,11 @@ export default function Preferences() {
       <div className="mt-12 mb-8">
         <button
           onClick={() => {
-
             console.log("Saving preferences:", selections);
             // Save preferences to localStorage for search functionality
-            localStorage.setItem('userPreferences', JSON.stringify(selections));
+            localStorage.setItem("userPreferences", JSON.stringify(selections));
             // forward photo to /shop so it can be used as bg
             navigate("/loading", { state: { photo } });
-
           }}
           className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50"
           disabled={!photo}

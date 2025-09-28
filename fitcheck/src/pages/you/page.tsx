@@ -32,6 +32,10 @@ export default function BackstageFullBodyLocal() {
   const camRef = useRef<HTMLInputElement | null>(null);
   const libRef = useRef<HTMLInputElement | null>(null);
 
+  // info modal
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoStep, setInfoStep] = useState<0 | 1>(0);
+
   // toast + highlight
   const [notice, setNotice] = useState<Notice | null>(null);
   const [justAddedUrl, setJustAddedUrl] = useState<string | null>(null);
@@ -231,6 +235,15 @@ export default function BackstageFullBodyLocal() {
   const first = items[0] ?? null;
   const rest = items.slice(1);
 
+  // close info modal with ESC
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setInfoOpen(false);
+    }
+    if (infoOpen) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [infoOpen]);
+
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-100">
       {/* Top toast */}
@@ -266,9 +279,17 @@ export default function BackstageFullBodyLocal() {
           </button>
           <div className="font-semibold tracking-wide text-zinc-200">You</div>
 
-          <div className=" overflow-hidden ring-1 ring-zinc-700">
-            <InfoIcon />
-          </div>
+          {/* Info button */}
+          <button
+            onClick={() => {
+              setInfoStep(0);
+              setInfoOpen(true);
+            }}
+            className="p-2 rounded-full bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 text-zinc-200"
+            aria-label="How to take a good full body photo"
+          >
+            <InfoIcon className="h-5 w-5" />
+          </button>
         </div>
       </div>
 
@@ -476,6 +497,111 @@ export default function BackstageFullBodyLocal() {
                 </div>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info popup (two-step with Back page) */}
+      {infoOpen && (
+        <div
+          className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-6"
+          onClick={() => setInfoOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-sm pointer-events-auto rounded-2xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-md text-zinc-100 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+              <div className="flex items-center gap-2">
+                {infoStep === 1 ? (
+                  <button
+                    onClick={() => setInfoStep(0)}
+                    className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
+                    aria-label="Back"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                ) : (
+                  <span className="p-2 -m-2 opacity-0">
+                    <ChevronLeft className="h-5 w-5" />
+                  </span>
+                )}
+                <div className="font-medium">
+                  {infoStep === 0
+                    ? "How to take a great full-body photo"
+                    : "Why we ask for it"}
+                </div>
+              </div>
+              <button
+                onClick={() => setInfoOpen(false)}
+                className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            {infoStep === 0 ? (
+              <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
+                <ul className="list-disc pl-5 space-y-2 text-zinc-300">
+                  <li>
+                    Stand ~2–3 m from the camera; include your whole body.
+                  </li>
+                  <li>Good light in front of you; avoid heavy backlight.</li>
+                  <li>Neutral pose, arms relaxed at sides, facing forward.</li>
+                  <li>Wear fitted clothes (no coat/oversized hoodie).</li>
+                  <li>Background: plain wall if possible; keep frame tidy.</li>
+                </ul>
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => setInfoOpen(false)}
+                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                  >
+                    Got it
+                  </button>
+                  <button
+                    onClick={() => setInfoStep(1)}
+                    className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
+                  >
+                    Why this?
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
+                <p className="text-zinc-300">
+                  A clear full-body photo helps our virtual try-on place
+                  garments accurately on your silhouette, preserving proportions
+                  and fit.
+                </p>
+                <ul className="list-disc pl-5 space-y-2 text-zinc-300">
+                  <li>Better alignment = more realistic previews.</li>
+                  <li>Less distortion and fewer failed renders.</li>
+                  <li>
+                    We store photos only on your device unless you choose to
+                    upload.
+                  </li>
+                </ul>
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => setInfoStep(0)}
+                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setInfoOpen(false)}
+                    className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

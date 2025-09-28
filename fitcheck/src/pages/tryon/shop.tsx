@@ -115,7 +115,7 @@ export default function Shop() {
     console.log("🎯 Building search queries for:", { gender, occasion, vibe });
 
     // Generate HIGHLY SPECIFIC search queries
-    const queries = [];
+    const queries: string[] = [];
 
     if (gender === "women") {
       // Women's specific searches
@@ -389,6 +389,36 @@ export default function Shop() {
     searchQueries,
   ]);
 
+  // ---- derive loading + pagination from preference searches ----
+  const searchLoading = !!(
+    s1?.loading ||
+    s2?.loading ||
+    s3?.loading ||
+    s4?.loading ||
+    s5?.loading ||
+    s6?.loading
+  );
+  const hasAnyNextPage = !!(
+    s1?.hasNextPage ||
+    s2?.hasNextPage ||
+    s3?.hasNextPage ||
+    s4?.hasNextPage ||
+    s5?.hasNextPage ||
+    s6?.hasNextPage
+  );
+  const fetchMoreAll = () => {
+    dlog("fetchMore(all preference-based searches)");
+    [s1, s2, s3, s4, s5, s6].forEach((s) => s?.hasNextPage && s?.fetchMore?.());
+  };
+
+  useEffect(() => {
+    dgroup("SEARCH (preference-based)", () => {
+      dlog("loading =", searchLoading);
+      dlog("products.count =", products?.length || 0);
+      dlog("hasAnyNextPage =", !!hasAnyNextPage);
+    });
+  }, [searchLoading, products?.length, hasAnyNextPage]);
+
   const [lastMeta, setLastMeta] = useState<LookMeta | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -423,25 +453,6 @@ export default function Shop() {
       dlog("state.tryOnUrl =", preview(state?.tryOnUrl));
     });
   }, []);
-
-  // ---- SEARCH (recommended items for the carousel) ----
-  const {
-    products: recommended = [],
-    loading: searchLoading,
-    hasNextPage,
-    fetchMore,
-  } = useProductSearch({
-    query: "dress",
-    first: 20,
-  });
-
-  useEffect(() => {
-    dgroup("SEARCH", () => {
-      dlog("loading =", searchLoading);
-      dlog("recommended.count =", recommended?.length || 0);
-      dlog("hasNextPage =", !!hasNextPage);
-    });
-  }, [searchLoading, recommended?.length, hasNextPage]);
 
   // ---- model helpers (unchanged) ----
   function getSavedModelUrl(): string | null {
@@ -712,7 +723,8 @@ export default function Shop() {
     });
   }
 
-  if (!products?.length && !recommended?.length && !searchLoading) {
+  // Empty state should depend on preference-based products + combined loading
+  if (!products?.length && !searchLoading) {
     dlog("Empty state: no saved products and no recommended results");
     return (
       <div className="min-h-dvh flex items-center justify-center px-6 text-center">
@@ -795,7 +807,7 @@ export default function Shop() {
                 )
               }
             >
-              {recommended?.map((p: any) => {
+              {products?.map((p: any) => {
                 const isSelected = !!selected[p.id];
                 return (
                   <div
@@ -822,12 +834,9 @@ export default function Shop() {
                   </div>
                 );
               })}
-              {hasNextPage && fetchMore && (
+              {hasAnyNextPage && (
                 <button
-                  onClick={() => {
-                    dlog("fetchMore()");
-                    fetchMore();
-                  }}
+                  onClick={fetchMoreAll}
                   className="shrink-0 px-3 py-2 rounded-full border text-sm bg-white"
                 >
                   Load more
@@ -854,64 +863,7 @@ export default function Shop() {
       )}
 
       {/* Floating Debug Console */}
-      {/* {debugOpen ? (
-        <div className="fixed bottom-3 right-3 z-50 w-[min(92vw,520px)] max-h-[48vh] bg-zinc-900/90 text-zinc-100 border border-zinc-700 rounded-xl backdrop-blur-md shadow-2xl flex flex-col">
-          <div className="px-3 py-2 border-b border-zinc-700 flex items-center gap-2">
-            <span className="text-xs font-semibold">Debug</span>
-            <span className="text-[10px] text-zinc-400">API: {API_BASE}</span>
-            <span className="ml-auto" />
-            <button
-              className="text-[11px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
-              onClick={() => setLogs([])}
-            >
-              Clear
-            </button>
-            <button
-              className="text-[11px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700"
-              onClick={() => {
-                const txt = logs
-                  .map(
-                    (l) => `[${new Date(l.ts).toLocaleTimeString()}] ${l.msg}`
-                  )
-                  .join("\n");
-                navigator.clipboard.writeText(txt).catch(() => {});
-              }}
-            >
-              Copy
-            </button>
-            <button
-              className="text-[13px] px-2 py-1 rounded hover:bg-zinc-800"
-              onClick={() => setDebugOpen(false)}
-              aria-label="Close debug"
-              title="Close"
-            >
-              ×
-            </button>
-          </div>
-          <div className="p-2 text-[11px] overflow-auto leading-snug whitespace-pre-wrap font-mono">
-            {logs.length === 0 ? (
-              <div className="text-zinc-400">No logs yet…</div>
-            ) : (
-              logs.map((l, i) => (
-                <div key={i}>
-                  <span className="text-zinc-500">
-                    [{new Date(l.ts).toLocaleTimeString()}]
-                  </span>{" "}
-                  {l.msg}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      ) : (
-        <button
-          className="fixed bottom-3 right-3 z-50 h-9 w-9 rounded-full bg-black/70 text-white grid place-items-center shadow-lg"
-          onClick={() => setDebugOpen(true)}
-          title="Open debug"
-        >
-          🐞
-        </button>
-      )} */}
+      {/* ...kept commented out... */}
     </div>
   );
 }

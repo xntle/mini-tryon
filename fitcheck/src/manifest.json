@@ -1,11 +1,8 @@
 {
   "name": "fitcheck",
-  "permissions": ["CAMERA", "GALLERY"],
+  "permissions": ["CAMERA"],
   "privacy_policy_url": "https://example.com/privacy",
   "terms_url": "https://example.com/terms",
-  "trusted_domains": [
-    "mini-tryon-production.up.railway.app",
-    "cdn.fashn.ai"
-  ],
+  "trusted_domains": ["mini-tryon-production.up.railway.app", "cdn.fashn.ai"],
   "handle": "fitcheck-ag4o"
 }
