@@ -770,7 +770,6 @@ export default function Shop() {
           >
             Save this look
           </button>
-          <p>{bgUrl}</p>
         </div>
       )}
 
@@ -861,9 +860,6 @@ export default function Shop() {
           </button>
         </div>
       )}
-
-      {/* Floating Debug Console */}
-      {/* ...kept commented out... */}
     </div>
   );
 }
