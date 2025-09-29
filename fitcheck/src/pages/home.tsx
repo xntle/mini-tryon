@@ -37,7 +37,6 @@ export default function Home() {
     setErr(null);
     try {
       const r = await fetch("mini-tryon-production.up.railway.app/api/tryon", {
-        // if no dev proxy, use: "http://localhost:3000/api/tryon"
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // 👇 only send garment_image; server should default the model_image
