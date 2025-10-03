@@ -6,7 +6,7 @@ import {
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router";
+import { useNavigate } from 'react-router';
 
 export type PhotoGalleryButtonProps = {
   open?: boolean;
