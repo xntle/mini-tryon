@@ -99,11 +99,6 @@ export default function FitDetail() {
         style={{ zIndex: 0 }}
       />
 
-      <div
-        className="pointer-events-none fixed inset-0 bg-gradient-to-t from-black/40 via-black/10 to-black/40"
-        style={{ zIndex: 1 }}
-      />
-
       {/* Top controls (glass) */}
       <div className="fixed top-3 left-1/2 -translate-x-1/2 z-20 w-[min(96vw,680px)]">
         <div className="mx-auto flex items-center gap-2 rounded-full bg-black/30 backdrop-blur-xl ring-1 ring-white/10 px-2 py-1">

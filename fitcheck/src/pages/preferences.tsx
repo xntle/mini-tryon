@@ -4,6 +4,85 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
+/* --- tiny helpers to keep localStorage safe --- */
+const BYTE_BUDGET_PER_ITEM = 2_000_000; // ~2 MB max per item (post-compress)
+
+function storageUsable() {
+  try {
+    const k = "__probe__" + Math.random();
+    localStorage.setItem(k, "1");
+    localStorage.removeItem(k);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function approxBytesOfDataUrl(dataUrl: string) {
+  const i = dataUrl.indexOf(",");
+  const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+  return Math.floor((b64.length * 3) / 4);
+}
+
+// downscale + jpeg encode to reduce size (async)
+async function compressDataUrl(
+  dataUrl: string,
+  maxW = 800,
+  maxH = 1200,
+  quality = 0.72
+): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      const r = Math.min(maxW / img.width, maxH / img.height, 1);
+      const w = Math.round(img.width * r);
+      const h = Math.round(img.height * r);
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function savePhotoSafely(rawDataUrl: string) {
+  if (!storageUsable()) throw new Error("localStorage unavailable");
+
+  // Precompress if big
+  let dataUrl = rawDataUrl;
+  if (approxBytesOfDataUrl(dataUrl) > BYTE_BUDGET_PER_ITEM) {
+    dataUrl = await compressDataUrl(dataUrl);
+  }
+
+  // Step down if still large
+  const steps = [
+    { w: 700, h: 1050, q: 0.7 },
+    { w: 600, h: 900, q: 0.65 },
+    { w: 480, h: 720, q: 0.6 },
+  ];
+  for (const s of steps) {
+    if (approxBytesOfDataUrl(dataUrl) <= BYTE_BUDGET_PER_ITEM) break;
+    dataUrl = await compressDataUrl(dataUrl, s.w, s.h, s.q);
+  }
+
+  // If it still doesn't fit your per-item budget, skip persisting to avoid crashes
+  if (approxBytesOfDataUrl(dataUrl) > BYTE_BUDGET_PER_ITEM) {
+    throw new Error("Selected photo is too large to store locally");
+  }
+
+  // Write (small) thumbnail only
+  localStorage.setItem("selectedPhoto", dataUrl);
+  return dataUrl;
+}
+
+/* --- your component --- */
+
 interface PreferenceSection {
   title: string;
   options: string[];
@@ -11,11 +90,7 @@ interface PreferenceSection {
 }
 
 const preferenceSections: PreferenceSection[] = [
-  {
-    title: "Gender",
-    options: ["Women", "Men", "Unisex"],
-    multiSelect: false,
-  },
+  { title: "Gender", options: ["Women", "Men", "Unisex"], multiSelect: false },
   {
     title: "Occasion",
     options: [
@@ -62,7 +137,6 @@ const preferenceSections: PreferenceSection[] = [
     ],
     multiSelect: false,
   },
-  // NEW
   {
     title: "Categories to browse",
     options: Object.keys(BUCKETS),
@@ -74,13 +148,32 @@ export default function Preferences() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: { photo?: string } };
   const [photo, setPhoto] = useState<string | null>(state?.photo ?? null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
+  // SAFER: compress & store only if small enough; otherwise skip storing and keep in memory
   useEffect(() => {
-    if (state?.photo) localStorage.setItem("selectedPhoto", state.photo);
-    if (!state?.photo) {
-      const saved = localStorage.getItem("selectedPhoto");
-      if (saved) setPhoto(saved);
-    }
+    (async () => {
+      try {
+        if (!state?.photo) {
+          // load small cached version if any
+          const saved = storageUsable()
+            ? localStorage.getItem("selectedPhoto")
+            : null;
+          if (saved) setPhoto(saved);
+          return;
+        }
+        // Try to persist a compressed thumbnail; if too big, keep it only in state
+        const small = await savePhotoSafely(state.photo);
+        setPhoto(small);
+        setPhotoError(null);
+      } catch (e: any) {
+        console.warn("[Preferences] photo persist skipped:", e?.message || e);
+        setPhoto(state?.photo ?? null); // keep in memory so UX continues
+        setPhotoError(
+          "We couldn't save your photo locally (it may be too large). It will still be used for this session."
+        );
+      }
+    })();
   }, [state?.photo]);
 
   const [selections, setSelections] = useState<Record<string, string[]>>({
@@ -136,6 +229,12 @@ export default function Preferences() {
         </div>
       </div>
 
+      {photoError && (
+        <div className="mb-4 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {photoError}
+        </div>
+      )}
+
       {/* Sections */}
       <div className="space-y-8">
         {preferenceSections.map((section) => (
@@ -165,7 +264,7 @@ export default function Preferences() {
           </div>
         ))}
 
-        {/* Plan preview (optional) */}
+        {/* Plan preview */}
         <div className="mt-4">
           <div className="text-sm text-gray-600 mb-2">We’ll start with:</div>
           <div className="flex flex-wrap gap-2">
@@ -185,11 +284,17 @@ export default function Preferences() {
       <div className="mt-12 mb-8">
         <button
           onClick={() => {
-            console.log("Saving preferences:", selections);
-            // Save preferences to localStorage for search functionality
-            localStorage.setItem("userPreferences", JSON.stringify(selections));
-            // forward photo to /shop so it can be used as bg
-            navigate("/loading", { state: { photo } });
+            try {
+              if (!storageUsable()) throw new Error("localStorage unavailable");
+              // preferences are tiny — safe to store
+              localStorage.setItem(
+                "userPreferences",
+                JSON.stringify(selections)
+              );
+            } catch (e) {
+              console.warn("Saving preferences failed:", e);
+            }
+            navigate("/loading", { state: { photo } }); // photo lives in memory if too big
           }}
           className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50"
           disabled={!photo}

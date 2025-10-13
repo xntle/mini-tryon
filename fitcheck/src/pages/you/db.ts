@@ -1,7 +1,8 @@
 // db.ts
 export type PhotoRecord = { id: string; createdAt: number; blob: Blob };
+
 const DB_NAME = "fitcheck-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // bumped to add index
 const STORE = "photos";
 const META = "meta";
 
@@ -11,7 +12,14 @@ function openDB(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: "id" });
+        const os = db.createObjectStore(STORE, { keyPath: "id" });
+        os.createIndex("createdAt_idx", "createdAt");
+      } else {
+        const tx = req.transaction as IDBTransaction;
+        const os = tx.objectStore(STORE);
+        if (!os.indexNames.contains("createdAt_idx")) {
+          os.createIndex("createdAt_idx", "createdAt");
+        }
       }
       if (!db.objectStoreNames.contains(META)) {
         db.createObjectStore(META);
@@ -34,6 +42,38 @@ async function tx<T>(
   }
 }
 
+async function evictOldest(
+  db: IDBDatabase,
+  bytesNeeded: number,
+  maxDeletes = 10
+) {
+  return new Promise<void>((resolve, reject) => {
+    const t = db.transaction(STORE, "readwrite");
+    const idx = t.objectStore(STORE).index("createdAt_idx");
+    let deleted = 0,
+      freed = 0;
+
+    const cursorReq = idx.openCursor();
+    cursorReq.onsuccess = (e: any) => {
+      const cursor: IDBCursorWithValue | null = e.target.result;
+      if (!cursor) return; // finished; t.oncomplete will fire
+      if (deleted >= maxDeletes || freed >= bytesNeeded) return; // stop early; t.oncomplete still fires
+      const rec = cursor.value as PhotoRecord;
+      const size = rec.blob?.size || 0;
+      cursor.delete();
+      deleted += 1;
+      freed += size;
+      cursor.continue();
+    };
+    cursorReq.onerror = () => reject(cursorReq.error);
+    t.oncomplete = () => {
+      console.log("[IDB] evicted", deleted, "item(s); freed≈", freed, "bytes");
+      resolve();
+    };
+    t.onerror = () => reject(t.error);
+  });
+}
+
 export async function addPhotoBlob(
   blob: Blob,
   createdAt?: number,
@@ -44,14 +84,28 @@ export async function addPhotoBlob(
     createdAt: createdAt ?? Date.now(),
     blob,
   };
+
   return tx("readwrite", async (db) => {
-    await new Promise<void>((res, rej) => {
-      const t = db.transaction(STORE, "readwrite");
-      t.objectStore(STORE).put(rec);
-      t.oncomplete = () => res();
-      t.onerror = () => rej(t.error);
-    });
-    return rec.id;
+    const putOnce = () =>
+      new Promise<void>((res, rej) => {
+        const t = db.transaction(STORE, "readwrite");
+        t.objectStore(STORE).put(rec);
+        t.oncomplete = () => res();
+        t.onerror = () => rej(t.error);
+      });
+
+    try {
+      await putOnce();
+      return rec.id;
+    } catch (e: any) {
+      console.warn(
+        "[IDB] put failed; evicting & retrying:",
+        e?.name || e?.message || e
+      );
+      await evictOldest(db, blob.size || 1_000_000, 10);
+      await putOnce();
+      return rec.id;
+    }
   });
 }
 
@@ -71,13 +125,11 @@ export async function listPhotos(): Promise<PhotoRecord[]> {
     return await new Promise<PhotoRecord[]>((res, rej) => {
       const t = db.transaction(STORE, "readonly");
       const store = t.objectStore(STORE);
-      // getAll is widely supported
       const r = (store as any).getAll ? (store as any).getAll() : null;
       if (r) {
         r.onsuccess = () => res(r.result as PhotoRecord[]);
         r.onerror = () => rej(r.error);
       } else {
-        // fallback cursor
         const out: PhotoRecord[] = [];
         const req = store.openCursor();
         req.onsuccess = (e: any) => {
@@ -110,15 +162,13 @@ export async function getCurrentId(): Promise<string | null> {
   return tx("readonly", async (db) => {
     return await new Promise<string | null>((res, rej) => {
       const t = db.transaction(META, "readonly");
-      const os = t.objectStore(META);
-      const r = os.get("currentId");
+      const r = t.objectStore(META).get("currentId");
       r.onsuccess = () => res((r.result as string) ?? null);
       r.onerror = () => rej(r.error);
     });
   });
 }
 
-/** Optional: request persistent storage to reduce eviction risk */
 export async function requestPersistence(): Promise<boolean> {
   try {
     // @ts-ignore

@@ -5,7 +5,7 @@ import {
   useRecommendedProducts,
   ProductCard,
 } from "@shopify/shop-minis-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router";
 import { apiUrl } from "../../lib/api";
 
 type ShopLocationState = {
@@ -44,6 +44,37 @@ function preview(val?: string | null, n = 120) {
   }
   const s = String(val);
   return s.length > n ? s.slice(0, n) + "..." : s;
+}
+
+// --- drop-in: convert data: -> blob: for reliable rendering ---
+function useDisplayUrl(src: string | null) {
+  const [display, setDisplay] = useState<string | null>(null);
+  useEffect(() => {
+    let revoke: string | null = null;
+    (async () => {
+      if (!src) {
+        setDisplay(null);
+        return;
+      }
+      if (!src.startsWith("data:")) {
+        setDisplay(src);
+        return;
+      }
+      try {
+        // turn data: into a Blob and then a blob:
+        const blob = await (await fetch(src)).blob();
+        const b = URL.createObjectURL(blob);
+        revoke = b;
+        setDisplay(b);
+      } catch {
+        setDisplay(src); // fallback to original
+      }
+    })();
+    return () => {
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [src]);
+  return display;
 }
 
 function fmtVal(v: any): string {

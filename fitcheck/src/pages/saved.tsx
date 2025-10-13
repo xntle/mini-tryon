@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Trash2, Share2, Star, ChevronLeft, InfoIcon, X } from "lucide-react";
 

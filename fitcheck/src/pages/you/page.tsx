@@ -1,3 +1,4 @@
+// BackstageFullBodyLocal.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Plus,
@@ -9,7 +10,6 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  FileQuestion,
   InfoIcon,
 } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -18,6 +18,111 @@ type SavedItem = { id: string; url: string; ts: number };
 
 const STORE_KEY = "fullBodyPhotos";
 const CURRENT_KEY = "fullBodyCurrentUrl";
+
+/* ===================== DROP-IN HELPERS (SAME FILE) ===================== */
+const BYTE_BUDGET = 4_500_000; // stay under ~5MB per-origin
+const MAX_ITEM_BYTES = 1_800_000; // per-image cap (post-compress)
+const TTL_DAYS = 60;
+
+function storageUsable() {
+  try {
+    const k = "__probe__" + Math.random();
+    localStorage.setItem(k, "1");
+    localStorage.removeItem(k);
+    return true;
+  } catch {
+    return false; // Safari Private / blocked
+  }
+}
+
+function approxBytesOfDataUrl(dataUrl: string) {
+  const i = dataUrl.indexOf(",");
+  const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+  return Math.floor((b64.length * 3) / 4);
+}
+
+// rough but good enough for budgeting
+function estimateItemsBytes(items: SavedItem[]) {
+  let total = 2; // []
+  for (const it of items) total += 64 + approxBytesOfDataUrl(it.url);
+  return total;
+}
+
+function dropOld(items: SavedItem[]) {
+  const cutoff = Date.now() - TTL_DAYS * 24 * 60 * 60 * 1000;
+  return items.filter((it) => it.ts >= cutoff).sort((a, b) => b.ts - a.ts);
+}
+
+function trimToBudget(items: SavedItem[], budget = BYTE_BUDGET) {
+  const arr = dropOld([...items]);
+  while (arr.length && estimateItemsBytes(arr) > budget) arr.pop(); // drop oldest
+  return arr;
+}
+
+// downscale + jpeg encode
+function compressDataUrl(
+  dataUrl: string,
+  maxW = 1200,
+  maxH = 1800,
+  quality = 0.82
+): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      const r = Math.min(maxW / img.width, maxH / img.height, 1);
+      const w = Math.round(img.width * r);
+      const h = Math.round(img.height * r);
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d");
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// data: -> blob: at render time (more reliable in webviews)
+function useDisplayUrl(src: string | null) {
+  const [display, setDisplay] = useState<string | null>(null);
+  useEffect(() => {
+    let revoke: string | null = null;
+    (async () => {
+      if (!src) {
+        setDisplay(null);
+        return;
+      }
+      if (!src.startsWith("data:")) {
+        setDisplay(src);
+        return;
+      }
+      try {
+        const blob = await (await fetch(src)).blob();
+        const b = URL.createObjectURL(blob);
+        revoke = b;
+        setDisplay(b);
+      } catch {
+        setDisplay(src);
+      }
+    })();
+    return () => {
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [src]);
+  return display;
+}
+
+function Thumb({ url }: { url: string }) {
+  const src = useDisplayUrl(url);
+  return (
+    <img src={src ?? url} alt="Saved" className="h-full w-full object-cover" />
+  );
+}
+/* =================== END DROP-IN HELPERS (SAME FILE) =================== */
 
 type Notice = { type: "progress" | "success" | "info" | "error"; msg: string };
 
@@ -41,23 +146,38 @@ export default function BackstageFullBodyLocal() {
   const [justAddedUrl, setJustAddedUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // ---- storage helpers ----
+  // ---- storage load/save (quota-safe) ----
   function loadAll() {
     try {
-      const raw = localStorage.getItem(STORE_KEY);
+      const raw = storageUsable() ? localStorage.getItem(STORE_KEY) : null;
       const arr: any[] = raw ? JSON.parse(raw) : [];
-      // migrate old entries without id -> give them ids
       const withIds: SavedItem[] = arr.map((x) =>
         "id" in x
           ? x
           : { id: crypto.randomUUID(), url: x.url, ts: x.ts ?? Date.now() }
       );
-      setItems(withIds);
-      if (withIds.length !== arr.length || arr.some((x) => !("id" in x))) {
-        localStorage.setItem(STORE_KEY, JSON.stringify(withIds));
+      const trimmed = trimToBudget(withIds);
+      setItems(trimmed);
+
+      // migrate + persist if changed
+      if (
+        withIds.length !== arr.length ||
+        estimateItemsBytes(withIds) !== estimateItemsBytes(trimmed)
+      ) {
+        if (storageUsable())
+          localStorage.setItem(STORE_KEY, JSON.stringify(trimmed));
       }
-      const cur = localStorage.getItem(CURRENT_KEY);
-      setCurrentUrl(cur ?? withIds[0]?.url ?? null);
+
+      const cur = storageUsable() ? localStorage.getItem(CURRENT_KEY) : null;
+      const chosen =
+        (cur && trimmed.some((x) => x.url === cur) ? cur : null) ??
+        trimmed[0]?.url ??
+        null;
+      setCurrentUrl(chosen);
+      if (storageUsable()) {
+        if (chosen) localStorage.setItem(CURRENT_KEY, chosen);
+        else localStorage.removeItem(CURRENT_KEY);
+      }
     } catch {
       setItems([]);
       setCurrentUrl(null);
@@ -65,12 +185,20 @@ export default function BackstageFullBodyLocal() {
   }
 
   function saveAll(next: SavedItem[], nextCurrent?: string | null) {
-    localStorage.setItem(STORE_KEY, JSON.stringify(next));
-    setItems(next);
-    const cur = nextCurrent !== undefined ? nextCurrent : currentUrl;
-    if (cur) {
-      localStorage.setItem(CURRENT_KEY, cur);
-      setCurrentUrl(cur);
+    if (!storageUsable()) throw new Error("localStorage unavailable");
+    const trimmed = trimToBudget(next, BYTE_BUDGET);
+    localStorage.setItem(STORE_KEY, JSON.stringify(trimmed));
+    setItems(trimmed);
+
+    const desired = nextCurrent !== undefined ? nextCurrent : currentUrl;
+    const chosen =
+      (desired && trimmed.some((x) => x.url === desired) ? desired : null) ??
+      trimmed[0]?.url ??
+      null;
+
+    if (chosen) {
+      localStorage.setItem(CURRENT_KEY, chosen);
+      setCurrentUrl(chosen);
     } else {
       localStorage.removeItem(CURRENT_KEY);
       setCurrentUrl(null);
@@ -84,9 +212,7 @@ export default function BackstageFullBodyLocal() {
   // ---- feedback helpers ----
   function showNotice(n: Notice, ttl = 1400) {
     setNotice(n);
-    if (n.type !== "progress") {
-      window.setTimeout(() => setNotice(null), ttl);
-    }
+    if (n.type !== "progress") window.setTimeout(() => setNotice(null), ttl);
   }
   useEffect(() => {
     if (notice?.type === "progress") {
@@ -94,40 +220,6 @@ export default function BackstageFullBodyLocal() {
       return () => clearTimeout(t);
     }
   }, [notice]);
-
-  // ---- size/compress helpers ----
-  function approxBytesOfDataUrl(dataUrl: string) {
-    const i = dataUrl.indexOf(",");
-    const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
-    return Math.floor((b64.length * 3) / 4);
-  }
-
-  function compressDataUrl(
-    dataUrl: string,
-    maxW = 1200,
-    maxH = 1800,
-    quality = 0.82
-  ): Promise<string> {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        const r = Math.min(maxW / width, maxH / height, 1);
-        const w = Math.round(width * r);
-        const h = Math.round(height * r);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return resolve(dataUrl);
-        ctx.drawImage(img, 0, 0, w, h);
-        const out = canvas.toDataURL("image/jpeg", quality);
-        resolve(out);
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    });
-  }
 
   // ---- add/delete/select ----
   async function addDataUrl(dataUrl: string) {
@@ -145,8 +237,29 @@ export default function BackstageFullBodyLocal() {
         return;
       }
 
+      // precompress large inputs
       if (approxBytesOfDataUrl(dataUrl) > 2_000_000) {
         dataUrl = await compressDataUrl(dataUrl, 1200, 1800, 0.82);
+      }
+
+      // enforce per-item cap (aggressive step-down)
+      if (approxBytesOfDataUrl(dataUrl) > MAX_ITEM_BYTES) {
+        const steps = [
+          { w: 1000, h: 1500, q: 0.72 },
+          { w: 800, h: 1200, q: 0.68 },
+          { w: 600, h: 900, q: 0.64 },
+          { w: 480, h: 720, q: 0.6 },
+        ];
+        for (const s of steps) {
+          const compact = await compressDataUrl(dataUrl, s.w, s.h, s.q);
+          if (approxBytesOfDataUrl(compact) <= MAX_ITEM_BYTES) {
+            dataUrl = compact;
+            break;
+          }
+        }
+        if (approxBytesOfDataUrl(dataUrl) > MAX_ITEM_BYTES) {
+          throw new Error("Photo too large for local storage");
+        }
       }
 
       const rec: SavedItem = {
@@ -154,44 +267,25 @@ export default function BackstageFullBodyLocal() {
         url: dataUrl,
         ts: Date.now(),
       };
-
-      try {
-        const next = [rec, ...items];
-        saveAll(next, rec.url);
-      } catch {
-        const steps = [
-          { w: 1000, h: 1500, q: 0.75 },
-          { w: 800, h: 1200, q: 0.7 },
-          { w: 600, h: 900, q: 0.65 },
-        ];
-        let saved = false;
-        for (const s of steps) {
-          const compact = await compressDataUrl(rec.url, s.w, s.h, s.q);
-          const smaller: SavedItem = { ...rec, url: compact };
-          try {
-            const next = [smaller, ...items];
-            saveAll(next, smaller.url);
-            dataUrl = compact;
-            saved = true;
-            break;
-          } catch {}
-        }
-        if (!saved) throw new Error("Storage is full or blocked");
-      }
+      const next = trimToBudget([rec, ...items], BYTE_BUDGET); // evict-to-fit
+      saveAll(next, rec.url);
 
       setJustAddedUrl(dataUrl);
       setTimeout(() => setJustAddedUrl(null), 1200);
       showNotice({
         type: "success",
         msg:
-          approxBytesOfDataUrl(dataUrl) > 2_000_000
+          approxBytesOfDataUrl(dataUrl) > 1_000_000
             ? "Saved (compressed)"
-            : "Saved to device",
+            : "Saved",
       });
       setAddOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Save photo] error:", err);
-      showNotice({ type: "error", msg: "Failed to save photo" });
+      showNotice({
+        type: "error",
+        msg: err?.message || "Failed to save photo",
+      });
     } finally {
       setSaving(false);
     }
@@ -235,7 +329,6 @@ export default function BackstageFullBodyLocal() {
   const first = items[0] ?? null;
   const rest = items.slice(1);
 
-  // close info modal with ESC
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setInfoOpen(false);
@@ -243,6 +336,9 @@ export default function BackstageFullBodyLocal() {
     if (infoOpen) window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [infoOpen]);
+
+  // derive a blob: url for the big viewer
+  const displayUrl = useDisplayUrl(currentUrl);
 
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-100">
@@ -278,8 +374,6 @@ export default function BackstageFullBodyLocal() {
             <ChevronLeft />
           </button>
           <div className="font-semibold tracking-wide text-zinc-200">You</div>
-
-          {/* Info button */}
           <button
             onClick={() => {
               setInfoStep(0);
@@ -297,15 +391,15 @@ export default function BackstageFullBodyLocal() {
       <div className="max-w-xl mx-auto px-4">
         <div className="relative rounded-xl overflow-hidden bg-zinc-950 border border-zinc-900 shadow-inner">
           <div className="w-full h-[46vh] grid place-items-center bg-black">
-            {currentUrl ? (
+            {displayUrl ? (
               <img
-                src={currentUrl}
+                src={displayUrl}
                 alt="Current full body"
                 className="max-h-[46vh] w-full object-contain"
               />
             ) : (
               <div className="text-zinc-400">
-                Add a photo and press "+" at the bottom to start!{" "}
+                Add a photo and press "+" at the bottom to start!
               </div>
             )}
           </div>
@@ -335,7 +429,6 @@ export default function BackstageFullBodyLocal() {
           Choose one
         </h3>
 
-        {/* Thumbnails carousel: [Add] [first] [rest...] */}
         <div className="relative">
           {/* edge fades */}
           <div className="pointer-events-none absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-zinc-950 to-transparent" />
@@ -366,10 +459,9 @@ export default function BackstageFullBodyLocal() {
             className="flex gap-3 overflow-x-auto px-3 py-2 scroll-smooth snap-x snap-mandatory"
             style={{ scrollbarWidth: "none" } as React.CSSProperties}
           >
-            {/* Hide WebKit scrollbar */}
             <style>{`div::-webkit-scrollbar { display: none; height: 0; width: 0; }`}</style>
 
-            {/* Add tile (small) */}
+            {/* Add tile */}
             <button
               onClick={() => setAddOpen(true)}
               disabled={saving}
@@ -389,7 +481,7 @@ export default function BackstageFullBodyLocal() {
               </div>
             </button>
 
-            {/* First photo slot (small) */}
+            {/* First photo slot */}
             {first ? (
               <button
                 onClick={() => saveAll(items, first.url)}
@@ -404,11 +496,7 @@ export default function BackstageFullBodyLocal() {
                 key={first.id}
                 aria-selected={currentUrl === first.url}
               >
-                <img
-                  src={first.url}
-                  alt="Saved"
-                  className="h-full w-full object-cover"
-                />
+                <Thumb url={first.url} />
               </button>
             ) : (
               <div className="relative shrink-0 snap-center aspect-[3/5] w-24 sm:w-28 rounded-lg border-2 border-transparent" />
@@ -429,11 +517,7 @@ export default function BackstageFullBodyLocal() {
                 title={new Date(it.ts).toLocaleString()}
                 aria-selected={currentUrl === it.url}
               >
-                <img
-                  src={it.url}
-                  alt="Saved"
-                  className="h-full w-full object-cover"
-                />
+                <Thumb url={it.url} />
               </button>
             ))}
           </div>
@@ -501,7 +585,7 @@ export default function BackstageFullBodyLocal() {
         </div>
       )}
 
-      {/* Info popup (two-step with Back page) */}
+      {/* Info popup */}
       {infoOpen && (
         <div
           className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-6"
@@ -575,16 +659,12 @@ export default function BackstageFullBodyLocal() {
               <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
                 <p className="text-zinc-300">
                   A clear full-body photo helps our virtual try-on place
-                  garments accurately on your silhouette, preserving proportions
-                  and fit.
+                  garments accurately on your silhouette.
                 </p>
                 <ul className="list-disc pl-5 space-y-2 text-zinc-300">
                   <li>Better alignment = more realistic previews.</li>
-                  <li>Less distortion and fewer failed renders.</li>
-                  <li>
-                    We store photos only on your device unless you choose to
-                    upload.
-                  </li>
+                  <li>Fewer failed renders.</li>
+                  <li>Stored only on your device unless you upload.</li>
                 </ul>
                 <div className="flex items-center justify-between pt-2">
                   <button
