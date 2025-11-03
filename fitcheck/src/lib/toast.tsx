@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type ToastKind = "progress" | "success" | "info" | "error";
 export type ToastMsg = { type: ToastKind; msg: string };
@@ -9,20 +9,24 @@ export function toast(n: ToastMsg) {
 
 export function ToastHost() {
   const [note, setNote] = useState<ToastMsg | null>(null);
+  let hideTimer: number | undefined;
+
+  const on = (e: Event): void => {
+    const ev = e as CustomEvent<ToastMsg>;
+    setNote(ev.detail);
+    if (ev.detail.type !== "progress") {
+      if (hideTimer) window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => setNote(null), 1400);
+    }
+  };
 
   useEffect(() => {
-    const on = (e: Event) => {
-      const ev = e as CustomEvent<ToastMsg>;
-      setNote(ev.detail);
-      if (ev.detail.type !== "progress") {
-        const t = setTimeout(() => setNote(null), 1400);
-        return () => clearTimeout(t);
-      }
+    window.addEventListener("toast", on as EventListener);
+    return () => {
+      if (hideTimer) window.clearTimeout(hideTimer);
+      window.removeEventListener("toast", on as EventListener);
     };
-    window.addEventListener("fc:toast", on as any);
-    return () => window.removeEventListener("fc:toast", on as any);
   }, []);
-
   if (!note) return null;
 
   return (

@@ -282,7 +282,6 @@ export default function Shop() {
   }, [userPreferences]);
 
   // Run multiple searches for variety - add timestamp to force refresh
-  const searchTimestamp = useMemo(() => Date.now(), [userPreferences]);
   const s1 = useProductSearch({ query: searchQueries[0] || "", first: 6 });
   const s2 = useProductSearch({ query: searchQueries[1] || "", first: 6 });
   const s3 = useProductSearch({ query: searchQueries[2] || "", first: 6 });
@@ -434,19 +433,6 @@ export default function Shop() {
   const [trayDown, setTrayDown] = useState(false);
 
   // Debug console UI state + sink
-  const [debugOpen, setDebugOpen] = useState<boolean>(DEBUG);
-  const [logs, setLogs] = useState<LogItem[]>([]);
-  useEffect(() => {
-    const onLog = (e: Event) => {
-      const ev = e as CustomEvent<LogItem>;
-      setLogs((prev) => {
-        const next = [...prev, ev.detail];
-        return next.length > 200 ? next.slice(next.length - 200) : next;
-      });
-    };
-    window.addEventListener(LOG_EVENT, onLog as any);
-    return () => window.removeEventListener(LOG_EVENT, onLog as any);
-  }, []);
 
   // Startup debug
   useEffect(() => {

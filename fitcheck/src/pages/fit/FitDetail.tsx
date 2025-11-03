@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router";
-import { ExternalLink, Star, Trash2, Share2 } from "lucide-react";
+import { Star, Trash2, Share2 } from "lucide-react";
 import { useProduct, ProductLink } from "@shopify/shop-minis-react";
 
 type SavedItem = {
@@ -34,9 +34,10 @@ export default function FitDetail() {
   const { id } = useParams<{ id: string }>();
 
   const items = useMemo(loadAll, []);
-  const item =
-    items.find((x) => (x.lookId ? x.lookId === id : x.url === id)) ||
+  const found =
+    items.find((x) => (x.lookId ? x.lookId === id : x.url === id)) ??
     items.find((x) => encodeURIComponent(x.lookId ?? x.url) === id);
+  const item = found as SavedItem;
 
   if (!item) {
     return (

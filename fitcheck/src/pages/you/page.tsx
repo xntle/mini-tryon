@@ -260,9 +260,10 @@ export default function BackstageFullBodyLocal() {
   };
   useEffect(() => {
     if (notice?.type === "progress") {
-      const t = setTimeout(() => setNotice(null), 4000);
-      return () => clearTimeout(t);
+      const t = window.setTimeout(() => setNotice(null), 4000);
+      return () => window.clearTimeout(t);
     }
+    return undefined;
   }, [notice]);
 
   // add/delete/select

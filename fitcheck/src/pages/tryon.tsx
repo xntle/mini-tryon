@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import NavBar from "../components/Navbar";
 
 export default function TryOn() {

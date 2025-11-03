@@ -35,6 +35,9 @@ async function tx<T>(
   fn: (db: IDBDatabase) => Promise<T>
 ) {
   const db = await openDB();
+  if (mode) {
+    console.log("mode");
+  }
   try {
     return await fn(db);
   } finally {

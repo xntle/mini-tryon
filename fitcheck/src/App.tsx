@@ -7,7 +7,7 @@ import Loading from "./pages/loading";
 import FullBodyGallery from "./pages/you/page";
 import { ToastHost } from "./lib/toast";
 import FitDetail from "./pages/fit/FitDetail";
-import * as React from "react";
+
 import {
   MemoryRouter,
   Routes,

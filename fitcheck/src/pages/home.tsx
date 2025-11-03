@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { useSavedProducts, ProductCard } from "@shopify/shop-minis-react";
-import { useNavigate, useLocation } from "react-router";
-import { Button } from "@shopify/shop-minis-react";
+import { useLocation } from "react-router";
 
 type ShopLocationState = {
   photo?: string; // fallback bg if you want it
@@ -10,7 +9,6 @@ type ShopLocationState = {
 
 export default function Home() {
   const { products } = useSavedProducts();
-  const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
 
   const trackRef = useRef<HTMLDivElement | null>(null);

@@ -91,11 +91,6 @@ export default function Saved() {
     [items]
   );
   const visibleItems = tab === "all" ? items : items.filter((x) => x.favorite);
-  const titleCount = useMemo(
-    () =>
-      visibleItems.length === 1 ? "1 item" : `${visibleItems.length} items`,
-    [visibleItems.length]
-  );
 
   function deleteByUrl(url: string) {
     const next = items.filter((x) => x.url !== url);

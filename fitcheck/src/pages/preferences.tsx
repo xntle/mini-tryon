@@ -1,11 +1,9 @@
-// src/pages/Preferences.tsx
 import { ChevronLeft } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
-/* --- tiny helpers to keep localStorage safe --- */
-const BYTE_BUDGET_PER_ITEM = 2_000_000; // ~2 MB max per item (post-compress)
+const BYTE_BUDGET_PER_ITEM = 2_000_000;
 
 function storageUsable() {
   try {
