@@ -177,7 +177,6 @@ export default function Preferences() {
         localStorage.setItem(KEY, JSON.stringify(arr));
         localStorage.setItem(CUR, small);
 
-        // tiny handoff too (avoids history size limits)
         sessionStorage.setItem("shop:incomingPhoto", small);
         setPhotoError(null);
       } catch (e: any) {

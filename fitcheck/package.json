@@ -22,7 +22,6 @@
   "dependencies": {
     "@fal-ai/client": "1.6.0",
     "@shopify/shop-minis-react": "0.2.9",
-    "history": "^5.3.0",
     "lucide-react": "0.513.0",
     "react": "18.2.0",
     "react-dom": "18.2.0"
