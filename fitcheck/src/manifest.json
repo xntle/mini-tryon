@@ -1,13 +1,13 @@
 {
   "name": "fitcheck",
   "permissions": ["CAMERA"],
-  "privacy_policy_url": "https://example.com/privacy",
+  "privacy_policy_url": "https://thaianle.com/fitcheck/privacy",
   "scopes": [
     "product_list:write",
     "product_list:read",
     "products:recommendations:read"
   ],
-  "terms_url": "https://example.com/terms",
+  "terms_url": "https://thaianle.com/fitcheck/terms",
   "trusted_domains": ["mini-tryon-production.up.railway.app", "cdn.fashn.ai"],
   "handle": "fitcheck-ag4o"
 }
