@@ -165,6 +165,20 @@ export default function Preferences() {
         // Try to persist a compressed thumbnail; if too big, keep it only in state
         const small = await savePhotoSafely(state.photo);
         setPhoto(small);
+
+        // 🔗 sync with the same keys the other screens use
+        const rec = { id: crypto.randomUUID(), url: small, ts: Date.now() };
+        const KEY = "fullBodyPhotos",
+          CUR = "fullBodyCurrentUrl";
+        const arr = JSON.parse(localStorage.getItem(KEY) || "[]").filter(
+          (x: any) => x?.url !== small
+        );
+        arr.unshift(rec);
+        localStorage.setItem(KEY, JSON.stringify(arr));
+        localStorage.setItem(CUR, small);
+
+        // tiny handoff too (avoids history size limits)
+        sessionStorage.setItem("shop:incomingPhoto", small);
         setPhotoError(null);
       } catch (e: any) {
         console.warn("[Preferences] photo persist skipped:", e?.message || e);
@@ -294,7 +308,7 @@ export default function Preferences() {
             } catch (e) {
               console.warn("Saving preferences failed:", e);
             }
-            navigate("/loading", { state: { photo } }); // photo lives in memory if too big
+            navigate("/loading", { state: { photo } });
           }}
           className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50"
           disabled={!photo}

@@ -46,37 +46,6 @@ function preview(val?: string | null, n = 120) {
   return s.length > n ? s.slice(0, n) + "..." : s;
 }
 
-// --- drop-in: convert data: -> blob: for reliable rendering ---
-function useDisplayUrl(src: string | null) {
-  const [display, setDisplay] = useState<string | null>(null);
-  useEffect(() => {
-    let revoke: string | null = null;
-    (async () => {
-      if (!src) {
-        setDisplay(null);
-        return;
-      }
-      if (!src.startsWith("data:")) {
-        setDisplay(src);
-        return;
-      }
-      try {
-        // turn data: into a Blob and then a blob:
-        const blob = await (await fetch(src)).blob();
-        const b = URL.createObjectURL(blob);
-        revoke = b;
-        setDisplay(b);
-      } catch {
-        setDisplay(src); // fallback to original
-      }
-    })();
-    return () => {
-      if (revoke) URL.revokeObjectURL(revoke);
-    };
-  }, [src]);
-  return display;
-}
-
 function fmtVal(v: any): string {
   if (typeof v === "string") return v;
   try {
@@ -453,8 +422,11 @@ export default function Shop() {
   const [lastMeta, setLastMeta] = useState<LookMeta | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  // move this helper above state hooks
+
+  // seed bg with state OR saved photo
   const [bgUrl, setBgUrl] = useState<string | null>(
-    state?.tryOnUrl ?? state?.photo ?? null
+    () => state?.tryOnUrl ?? state?.photo ?? getSavedModelUrl()
   );
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -486,20 +458,67 @@ export default function Shop() {
   }, []);
 
   // ---- model helpers (unchanged) ----
+  function useDisplayUrl(src: string | null) {
+    const [out, setOut] = useState<string | null>(null);
+    useEffect(() => {
+      let revoke: string | null = null;
+      (async () => {
+        if (!src) return setOut(null);
+        if (!/^data:/i.test(src)) return setOut(src);
+        try {
+          const blob = await (await fetch(src)).blob();
+          const url = URL.createObjectURL(blob);
+          revoke = url;
+          setOut(url);
+        } catch {
+          setOut(src);
+        }
+      })();
+      return () => {
+        if (revoke) URL.revokeObjectURL(revoke);
+      };
+    }, [src]);
+    return out;
+  }
+
   function getSavedModelUrl(): string | null {
     try {
-      const cur = localStorage.getItem("fullBodyCurrentUrl");
-      if (cur) return cur;
-      const raw = localStorage.getItem("fullBodyPhotos");
-      const arr = raw ? JSON.parse(raw) : [];
-      const url = Array.isArray(arr) && arr[0]?.url ? arr[0].url : null;
-      dlog("getSavedModelUrl() ->", preview(url));
-      return url;
-    } catch (e) {
-      dlog("getSavedModelUrl() error:", e);
+      const ss = sessionStorage.getItem("shop:incomingPhoto");
+      if (ss) {
+        sessionStorage.removeItem("shop:incomingPhoto");
+        return ss;
+      }
+      return (
+        localStorage.getItem("fullBodyCurrentUrl") ??
+        JSON.parse(localStorage.getItem("fullBodyPhotos") || "[]")[0]?.url ??
+        localStorage.getItem("selectedPhoto") ?? // <- extra fallback
+        null
+      );
+    } catch {
       return null;
     }
   }
+
+  // always render the display-safe URL
+  const displayBgUrl = useDisplayUrl(bgUrl);
+
+  // 2) make display-safe (data: → blob:) like your other file
+  async function toDisplayUrl(src: string) {
+    if (!src?.startsWith("data:")) return src;
+    const blob = await (await fetch(src)).blob();
+    return URL.createObjectURL(blob);
+  }
+
+  // 3) seed bg once on mount
+  useEffect(() => {
+    (async () => {
+      if (!bgUrl) {
+        const u = getSavedModelUrl();
+        if (u) setBgUrl(await toDisplayUrl(u));
+      }
+    })();
+  }, []);
+
   const isHttpUrl = (s?: string | null) => !!s && /^https?:\/\//i.test(s);
   async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
     const [meta, b64] = dataUrl.split(",");
@@ -576,6 +595,16 @@ export default function Shop() {
     dlog("extractGarmentUrl(product.id=", p?.id, ") ->", u);
     return u;
   }
+  useEffect(() => {
+    if (!bgUrl && products?.length > 0) {
+      const first = products[0];
+      const firstImg = extractGarmentUrl(first);
+      if (firstImg) {
+        setBgUrl(firstImg);
+        setLastMeta(getLightMeta(first)); // optional: seed meta
+      }
+    }
+  }, [products, bgUrl]);
   function getLightMeta(p: any): LookMeta {
     const price =
       Number(p?.variants?.[0]?.price) ||
@@ -771,19 +800,18 @@ export default function Shop() {
 
   return (
     <div className="pb-24 pt-6 px-4 max-w-xl mx-auto">
-      {bgUrl && (
+      {displayBgUrl && (
         <div className="fixed inset-0 z-0">
           <img
-            src={bgUrl}
+            src={displayBgUrl}
             alt="Your selected look"
             className="w-full h-full object-cover"
           />
         </div>
       )}
-
       {loading && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 rounded-full bg-black/70 text-white px-4 py-2 text-sm">
-          Generating try-on… (might take upto 30 seconds)
+          Generating… (~30s)
         </div>
       )}
       {err && (
@@ -803,6 +831,11 @@ export default function Shop() {
           </button>
         </div>
       )}
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-0 h-40 sm:h-48
+                bg-gradient-to-t from-black/80 via-black/40 to-transparent
+                pb-[env(safe-area-inset-bottom)]"
+      />
 
       <div
         className={`fixed inset-x-0 bottom-0 z-0 transition-transform duration-300 mb-18 ${

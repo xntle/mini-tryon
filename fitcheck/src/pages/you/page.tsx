@@ -19,87 +19,53 @@ type SavedItem = { id: string; url: string; ts: number };
 const STORE_KEY = "fullBodyPhotos";
 const CURRENT_KEY = "fullBodyCurrentUrl";
 
-/* ===================== DROP-IN HELPERS (SAME FILE) ===================== */
-const BYTE_BUDGET = 4_500_000; // stay under ~5MB per-origin
-const MAX_ITEM_BYTES = 1_800_000; // per-image cap (post-compress)
-const TTL_DAYS = 60;
+// ---------- CONFIG ----------
+const BYTE_BUDGET = 4_500_000; // ~4.5MB total budget in localStorage
+const MAX_ITEM_BYTES = 1_500_000; // max bytes per image after compress
+const TTL_DAYS = 60; // evict older than N days
+const COMPRESS = {
+  maxW: 1280,
+  maxH: 1920,
+  maxMP: 3.2,
+  byteCeil: MAX_ITEM_BYTES,
+};
 
-function storageUsable() {
+// ---------- SMALL UTILS ----------
+const storageUsable = () => {
   try {
     const k = "__probe__" + Math.random();
     localStorage.setItem(k, "1");
     localStorage.removeItem(k);
     return true;
   } catch {
-    return false; // Safari Private / blocked
+    return false;
   }
-}
-
-function approxBytesOfDataUrl(dataUrl: string) {
-  const i = dataUrl.indexOf(",");
-  const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
+};
+const approxBytesOfDataUrl = (u: string) => {
+  const i = u.indexOf(",");
+  const b64 = i >= 0 ? u.slice(i + 1) : u;
   return Math.floor((b64.length * 3) / 4);
-}
-
-// rough but good enough for budgeting
-function estimateItemsBytes(items: SavedItem[]) {
-  let total = 2; // []
-  for (const it of items) total += 64 + approxBytesOfDataUrl(it.url);
-  return total;
-}
-
-function dropOld(items: SavedItem[]) {
-  const cutoff = Date.now() - TTL_DAYS * 24 * 60 * 60 * 1000;
-  return items.filter((it) => it.ts >= cutoff).sort((a, b) => b.ts - a.ts);
-}
-
-function trimToBudget(items: SavedItem[], budget = BYTE_BUDGET) {
+};
+const estimateItemsBytes = (items: SavedItem[]) =>
+  2 + items.reduce((n, it) => n + 64 + approxBytesOfDataUrl(it.url), 0);
+const dropOld = (items: SavedItem[]) => {
+  const cutoff = Date.now() - TTL_DAYS * 864e5;
+  return items.filter((i) => i.ts >= cutoff).sort((a, b) => b.ts - a.ts);
+};
+const trimToBudget = (items: SavedItem[], budget = BYTE_BUDGET) => {
   const arr = dropOld([...items]);
-  while (arr.length && estimateItemsBytes(arr) > budget) arr.pop(); // drop oldest
+  while (arr.length && estimateItemsBytes(arr) > budget) arr.pop();
   return arr;
-}
+};
 
-// downscale + jpeg encode
-function compressDataUrl(
-  dataUrl: string,
-  maxW = 1200,
-  maxH = 1800,
-  quality = 0.82
-): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => {
-      const r = Math.min(maxW / img.width, maxH / img.height, 1);
-      const w = Math.round(img.width * r);
-      const h = Math.round(img.height * r);
-      const c = document.createElement("canvas");
-      c.width = w;
-      c.height = h;
-      const ctx = c.getContext("2d");
-      if (!ctx) return resolve(dataUrl);
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL("image/jpeg", quality));
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
-}
-
-// data: -> blob: at render time (more reliable in webviews)
+// ---------- RENDER-SAFE URL (data: → blob:) ----------
 function useDisplayUrl(src: string | null) {
   const [display, setDisplay] = useState<string | null>(null);
   useEffect(() => {
     let revoke: string | null = null;
     (async () => {
-      if (!src) {
-        setDisplay(null);
-        return;
-      }
-      if (!src.startsWith("data:")) {
-        setDisplay(src);
-        return;
-      }
+      if (!src) return setDisplay(null);
+      if (!src.startsWith("data:")) return setDisplay(src);
       try {
         const blob = await (await fetch(src)).blob();
         const b = URL.createObjectURL(blob);
@@ -115,39 +81,120 @@ function useDisplayUrl(src: string | null) {
   }, [src]);
   return display;
 }
-
-function Thumb({ url }: { url: string }) {
+const Thumb = ({ url }: { url: string }) => {
   const src = useDisplayUrl(url);
   return (
     <img src={src ?? url} alt="Saved" className="h-full w-full object-cover" />
   );
-}
-/* =================== END DROP-IN HELPERS (SAME FILE) =================== */
+};
 
+// ---------- ROBUST COMPRESSOR ----------
+async function compressAnyToDataUrl(
+  input: File | string,
+  {
+    maxW,
+    maxH,
+    maxMP,
+    byteCeil,
+  }: { maxW: number; maxH: number; maxMP: number; byteCeil: number }
+): Promise<string> {
+  const toBlob = async (): Promise<Blob> => {
+    if (typeof input !== "string") return input;
+    return await (await fetch(input)).blob();
+  };
+  const blob = await toBlob();
+  const mime = (blob.type || "image/jpeg").toLowerCase();
+
+  // decode with EXIF orientation if available
+  let src: ImageBitmap | HTMLImageElement;
+  try {
+    // @ts-ignore
+    src = await createImageBitmap(blob, { imageOrientation: "from-image" });
+  } catch {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
+    await img.decode().catch(
+      () =>
+        new Promise<void>((res, rej) => {
+          img.onload = () => res();
+          img.onerror = rej;
+        })
+    );
+    src = img;
+  }
+  const sw = (src as any).width,
+    sh = (src as any).height;
+
+  // target size with megapixel guard
+  const mp = (sw * sh) / 1e6;
+  const scaleMP = Math.min(1, Math.sqrt(maxMP / Math.max(mp, maxMP)));
+  const r = Math.min(maxW / sw, maxH / sh, 1) * scaleMP;
+  const tw = Math.max(1, Math.round(sw * r));
+  const th = Math.max(1, Math.round(sh * r));
+
+  // simple progressive downscale (2 passes max)
+  const step = (w: number, h: number, inCanvas?: HTMLCanvasElement) => {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d")!;
+    // fill behind alpha formats when exporting JPEG (avoid dark halos)
+    if (/png|webp|avif/i.test(mime)) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, w, h);
+    }
+    const srcEl = inCanvas ?? (src as any);
+    const sw2 = inCanvas ? inCanvas.width : sw;
+    const sh2 = inCanvas ? inCanvas.height : sh;
+    ctx.drawImage(srcEl, 0, 0, sw2, sh2, 0, 0, w, h);
+    return c;
+  };
+  const mid =
+    sw > tw * 2 && sh > th * 2
+      ? step(Math.round(sw / 2), Math.round(sh / 2))
+      : null;
+  const canvas = step(tw, th, mid ?? undefined);
+
+  // try a small quality ladder, then tiny shrink if needed
+  for (const q of [0.82, 0.74, 0.68]) {
+    const out = canvas.toDataURL("image/jpeg", q);
+    if (approxBytesOfDataUrl(out) <= byteCeil) return out;
+  }
+  const c2 = step(
+    Math.max(320, Math.round(tw * 0.88)),
+    Math.max(320, Math.round(th * 0.88)),
+    canvas
+  );
+  for (const q of [0.7, 0.64, 0.6]) {
+    const out = c2.toDataURL("image/jpeg", q);
+    if (approxBytesOfDataUrl(out) <= byteCeil) return out;
+  }
+  return c2.toDataURL("image/jpeg", 0.6);
+}
+
+// ---------- UI ----------
 type Notice = { type: "progress" | "success" | "info" | "error"; msg: string };
 
 export default function BackstageFullBodyLocal() {
   const navigate = useNavigate();
-
   const [items, setItems] = useState<SavedItem[]>([]);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 
-  // chooser + inputs
   const [addOpen, setAddOpen] = useState(false);
   const camRef = useRef<HTMLInputElement | null>(null);
   const libRef = useRef<HTMLInputElement | null>(null);
 
-  // info modal
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoStep, setInfoStep] = useState<0 | 1>(0);
 
-  // toast + highlight
   const [notice, setNotice] = useState<Notice | null>(null);
   const [justAddedUrl, setJustAddedUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // ---- storage load/save (quota-safe) ----
-  function loadAll() {
+  // load/save with budget/eviction
+  const loadAll = () => {
     try {
       const raw = storageUsable() ? localStorage.getItem(STORE_KEY) : null;
       const arr: any[] = raw ? JSON.parse(raw) : [];
@@ -159,7 +206,6 @@ export default function BackstageFullBodyLocal() {
       const trimmed = trimToBudget(withIds);
       setItems(trimmed);
 
-      // migrate + persist if changed
       if (
         withIds.length !== arr.length ||
         estimateItemsBytes(withIds) !== estimateItemsBytes(trimmed)
@@ -182,11 +228,11 @@ export default function BackstageFullBodyLocal() {
       setItems([]);
       setCurrentUrl(null);
     }
-  }
+  };
 
-  function saveAll(next: SavedItem[], nextCurrent?: string | null) {
+  const saveAll = (next: SavedItem[], nextCurrent?: string | null) => {
     if (!storageUsable()) throw new Error("localStorage unavailable");
-    const trimmed = trimToBudget(next, BYTE_BUDGET);
+    const trimmed = trimToBudget(next);
     localStorage.setItem(STORE_KEY, JSON.stringify(trimmed));
     setItems(trimmed);
 
@@ -195,7 +241,6 @@ export default function BackstageFullBodyLocal() {
       (desired && trimmed.some((x) => x.url === desired) ? desired : null) ??
       trimmed[0]?.url ??
       null;
-
     if (chosen) {
       localStorage.setItem(CURRENT_KEY, chosen);
       setCurrentUrl(chosen);
@@ -203,17 +248,16 @@ export default function BackstageFullBodyLocal() {
       localStorage.removeItem(CURRENT_KEY);
       setCurrentUrl(null);
     }
-  }
+  };
 
   useEffect(() => {
     loadAll();
   }, []);
 
-  // ---- feedback helpers ----
-  function showNotice(n: Notice, ttl = 1400) {
+  const showNotice = (n: Notice, ttl = 1400) => {
     setNotice(n);
     if (n.type !== "progress") window.setTimeout(() => setNotice(null), ttl);
-  }
+  };
   useEffect(() => {
     if (notice?.type === "progress") {
       const t = setTimeout(() => setNotice(null), 4000);
@@ -221,13 +265,11 @@ export default function BackstageFullBodyLocal() {
     }
   }, [notice]);
 
-  // ---- add/delete/select ----
+  // add/delete/select
   async function addDataUrl(dataUrl: string) {
     setSaving(true);
     showNotice({ type: "progress", msg: "Saving…" });
-
     try {
-      // dedupe
       if (items.some((x) => x.url === dataUrl)) {
         saveAll(items, dataUrl);
         setJustAddedUrl(dataUrl);
@@ -237,48 +279,23 @@ export default function BackstageFullBodyLocal() {
         return;
       }
 
-      // precompress large inputs
-      if (approxBytesOfDataUrl(dataUrl) > 2_000_000) {
-        dataUrl = await compressDataUrl(dataUrl, 1200, 1800, 0.82);
-      }
-
-      // enforce per-item cap (aggressive step-down)
-      if (approxBytesOfDataUrl(dataUrl) > MAX_ITEM_BYTES) {
-        const steps = [
-          { w: 1000, h: 1500, q: 0.72 },
-          { w: 800, h: 1200, q: 0.68 },
-          { w: 600, h: 900, q: 0.64 },
-          { w: 480, h: 720, q: 0.6 },
-        ];
-        for (const s of steps) {
-          const compact = await compressDataUrl(dataUrl, s.w, s.h, s.q);
-          if (approxBytesOfDataUrl(compact) <= MAX_ITEM_BYTES) {
-            dataUrl = compact;
-            break;
-          }
-        }
-        if (approxBytesOfDataUrl(dataUrl) > MAX_ITEM_BYTES) {
-          throw new Error("Photo too large for local storage");
-        }
-      }
+      // ensure under per-item cap
+      const safe =
+        approxBytesOfDataUrl(dataUrl) > MAX_ITEM_BYTES
+          ? await compressAnyToDataUrl(dataUrl, COMPRESS)
+          : dataUrl;
 
       const rec: SavedItem = {
         id: crypto.randomUUID(),
-        url: dataUrl,
+        url: safe,
         ts: Date.now(),
       };
-      const next = trimToBudget([rec, ...items], BYTE_BUDGET); // evict-to-fit
+      const next = trimToBudget([rec, ...items]); // evict oldest to fit
       saveAll(next, rec.url);
 
-      setJustAddedUrl(dataUrl);
+      setJustAddedUrl(rec.url);
       setTimeout(() => setJustAddedUrl(null), 1200);
-      showNotice({
-        type: "success",
-        msg:
-          approxBytesOfDataUrl(dataUrl) > 1_000_000
-            ? "Saved (compressed)"
-            : "Saved",
-      });
+      showNotice({ type: "success", msg: "Saved" });
       setAddOpen(false);
     } catch (err: any) {
       console.error("[Save photo] error:", err);
@@ -292,24 +309,18 @@ export default function BackstageFullBodyLocal() {
   }
 
   const railRef = useRef<HTMLDivElement | null>(null);
-  function scrollRail(dx: number) {
+  const scrollRail = (dx: number) =>
     railRef.current?.scrollBy({ left: dx, behavior: "smooth" });
-  }
 
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        await addDataUrl(String(reader.result));
-      };
-      reader.onerror = () =>
-        showNotice({ type: "error", msg: "Failed to read photo" });
-      reader.readAsDataURL(file);
+      const compressed = await compressAnyToDataUrl(file, COMPRESS);
+      await addDataUrl(compressed);
     } catch {
-      showNotice({ type: "error", msg: "Failed to save photo" });
+      showNotice({ type: "error", msg: "Failed to process photo" });
     }
   }
 
@@ -325,24 +336,20 @@ export default function BackstageFullBodyLocal() {
     () => (items.length === 1 ? "1 photo" : `${items.length} photos`),
     [items.length]
   );
-
   const first = items[0] ?? null;
   const rest = items.slice(1);
-
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setInfoOpen(false);
-    }
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setInfoOpen(false);
     if (infoOpen) window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [infoOpen]);
 
-  // derive a blob: url for the big viewer
   const displayUrl = useDisplayUrl(currentUrl);
 
   return (
     <div className="min-h-dvh bg-zinc-950 text-zinc-100">
-      {/* Top toast */}
+      {/* Toast */}
       {notice && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
           <div
@@ -426,15 +433,13 @@ export default function BackstageFullBodyLocal() {
       {/* Choose section */}
       <div className="max-w-xl mx-auto px-4 pt-6 pb-28">
         <h3 className="text-center text-base font-medium mb-4 text-zinc-300">
-          Choose one
+          {countLabel}
         </h3>
 
         <div className="relative">
-          {/* edge fades */}
           <div className="pointer-events-none absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-zinc-950 to-transparent" />
           <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-zinc-950 to-transparent" />
 
-          {/* left chevron */}
           <button
             type="button"
             onClick={() => scrollRail(-200)}
@@ -443,8 +448,6 @@ export default function BackstageFullBodyLocal() {
           >
             <ChevronLeft className="h-5 w-5 text-zinc-200" />
           </button>
-
-          {/* right chevron */}
           <button
             type="button"
             onClick={() => scrollRail(200)}
@@ -481,7 +484,7 @@ export default function BackstageFullBodyLocal() {
               </div>
             </button>
 
-            {/* First photo slot */}
+            {/* First */}
             {first ? (
               <button
                 onClick={() => saveAll(items, first.url)}
@@ -502,7 +505,7 @@ export default function BackstageFullBodyLocal() {
               <div className="relative shrink-0 snap-center aspect-[3/5] w-24 sm:w-28 rounded-lg border-2 border-transparent" />
             )}
 
-            {/* Rest of photos */}
+            {/* Rest */}
             {rest.map((it) => (
               <button
                 key={it.id}
@@ -597,7 +600,6 @@ export default function BackstageFullBodyLocal() {
             className="w-full max-w-sm pointer-events-auto rounded-2xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-md text-zinc-100 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 {infoStep === 1 ? (
@@ -627,61 +629,65 @@ export default function BackstageFullBodyLocal() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-
-            {/* Body */}
-            {infoStep === 0 ? (
-              <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
-                <ul className="list-disc pl-5 space-y-2 text-zinc-300">
-                  <li>
-                    Stand ~2–3 m from the camera; include your whole body.
-                  </li>
-                  <li>Good light in front of you; avoid heavy backlight.</li>
-                  <li>Neutral pose, arms relaxed at sides, facing forward.</li>
-                  <li>Wear fitted clothes (no coat/oversized hoodie).</li>
-                  <li>Background: plain wall if possible; keep frame tidy.</li>
-                </ul>
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    onClick={() => setInfoOpen(false)}
-                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
-                  >
-                    Got it
-                  </button>
-                  <button
-                    onClick={() => setInfoStep(1)}
-                    className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
-                  >
-                    Why this?
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
-                <p className="text-zinc-300">
-                  A clear full-body photo helps our virtual try-on place
-                  garments accurately on your silhouette.
-                </p>
-                <ul className="list-disc pl-5 space-y-2 text-zinc-300">
-                  <li>Better alignment = more realistic previews.</li>
-                  <li>Fewer failed renders.</li>
-                  <li>Stored only on your device unless you upload.</li>
-                </ul>
-                <div className="flex items-center justify-between pt-2">
-                  <button
-                    onClick={() => setInfoStep(0)}
-                    className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={() => setInfoOpen(false)}
-                    className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
+              {infoStep === 0 ? (
+                <>
+                  <ul className="list-disc pl-5 space-y-2 text-zinc-300">
+                    <li>
+                      Stand ~2–3 m from the camera; include your whole body.
+                    </li>
+                    <li>Good light in front of you; avoid heavy backlight.</li>
+                    <li>
+                      Neutral pose, arms relaxed at sides, facing forward.
+                    </li>
+                    <li>Wear fitted clothes (no coat/oversized hoodie).</li>
+                    <li>
+                      Background: plain wall if possible; keep frame tidy.
+                    </li>
+                  </ul>
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      onClick={() => setInfoOpen(false)}
+                      className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                    >
+                      Got it
+                    </button>
+                    <button
+                      onClick={() => setInfoStep(1)}
+                      className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
+                    >
+                      Why this?
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-zinc-300">
+                    A clear full-body photo helps our virtual try-on place
+                    garments accurately on your silhouette.
+                  </p>
+                  <ul className="list-disc pl-5 space-y-2 text-zinc-300">
+                    <li>Better alignment = more realistic previews.</li>
+                    <li>Fewer failed renders.</li>
+                    <li>Stored only on your device unless you upload.</li>
+                  </ul>
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      onClick={() => setInfoStep(0)}
+                      className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={() => setInfoOpen(false)}
+                      className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -167,11 +167,10 @@ export default function PhotoGalleryButton({
   function handleFabClick() {
     const saved = getSavedFullBodyUrl();
     if (saved) {
+      sessionStorage.setItem("shop:incomingPhoto", saved); // 🔹 add this
       navigate("/preferences", { state: { photo: saved } });
       return;
     }
-    // If you prefer the /you redirect when none saved, swap next line:
-    // navigate("/you"); return;
     applyOpen(true);
   }
 
@@ -185,10 +184,10 @@ export default function PhotoGalleryButton({
       try {
         let dataUrl = String(reader.result);
         // persist using the same logic as Backstage
+        // inside reader.onload after finalUrl is computed
         const finalUrl = await addDataUrlAndSetCurrent(dataUrl);
-        // allow external listeners too
+        sessionStorage.setItem("shop:incomingPhoto", finalUrl);
         if (onSelected) onSelected(file, finalUrl);
-        // continue to preferences with the saved (maybe-compressed) URL
         navigate("/preferences", { state: { photo: finalUrl } });
       } catch (err) {
         console.error("[PhotoGalleryButton] save error:", err);
