@@ -15,26 +15,29 @@ import {
   Navigate,
   useLocation,
 } from "react-router";
+import { MinisRouter } from "@shopify/shop-minis-react";
 
 function AppRoutes() {
   const { pathname } = useLocation();
   const hide = ["/yourfit", "/preferences", "/loading", "/tryon-new-user"];
   return (
     <>
-      <Routes>
-        <Route path="/" element={<TryOn />} />
-        <Route path="/home" element={<Shop />} />
-        <Route path="/saved" element={<Saved />} />
-        <Route path="/tryon" element={<TryOn />} />
-        <Route path="/you" element={<FullBodyGallery />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/preferences" element={<Preferences />} />
-        <Route path="/fit/:id" element={<FitDetail />} />
-        <Route path="/loading" element={<Loading />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      {!hide.some((p) => pathname.startsWith(p)) && <NavBar />}
-      <ToastHost />
+      <MinisRouter>
+        <Routes>
+          <Route path="/" element={<TryOn />} />
+          <Route path="/home" element={<Shop />} />
+          <Route path="/saved" element={<Saved />} />
+          <Route path="/tryon" element={<TryOn />} />
+          <Route path="/you" element={<FullBodyGallery />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/preferences" element={<Preferences />} />
+          <Route path="/fit/:id" element={<FitDetail />} />
+          <Route path="/loading" element={<Loading />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        {!hide.some((p) => pathname.startsWith(p)) && <NavBar />}
+        <ToastHost />
+      </MinisRouter>
     </>
   );
 }

@@ -233,7 +233,9 @@ export default function BackstageFullBodyLocal() {
   const saveAll = (next: SavedItem[], nextCurrent?: string | null) => {
     if (!storageUsable()) throw new Error("localStorage unavailable");
     const trimmed = trimToBudget(next);
-    localStorage.setItem(STORE_KEY, JSON.stringify(trimmed));
+    // Save only the photo links (URLs) in localStorage
+    const links = trimmed.map((item) => ({ id: item.id, url: item.url, ts: item.ts }));
+    localStorage.setItem(STORE_KEY, JSON.stringify(links));
     setItems(trimmed);
 
     const desired = nextCurrent !== undefined ? nextCurrent : currentUrl;

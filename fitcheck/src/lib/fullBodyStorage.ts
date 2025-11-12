@@ -8,7 +8,7 @@ export type SavedItem = { id: string; url: string; ts: number };
 export const STORE_KEY = "fullBodyPhotos";
 export const CURRENT_KEY = "fullBodyCurrentUrl";
 
-// ---------- CONFIG (keep in sync with You page) ----------
+
 const BYTE_BUDGET = 4_500_000; // ~4.5MB total budget in localStorage
 const MAX_ITEM_BYTES = 1_500_000; // max bytes per image after compress
 const TTL_DAYS = 60; // evict older than N days
@@ -19,7 +19,7 @@ export const COMPRESS = {
   byteCeil: MAX_ITEM_BYTES,
 };
 
-// ---------- SMALL UTILS ----------
+
 const storageUsable = () => {
   try {
     const k = "__probe__" + Math.random();
