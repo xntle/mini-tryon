@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
-const BYTE_BUDGET_PER_ITEM = 2_000_000;
+const BYTE_BUDGET_PER_ITEM = 4_500_000;
 
 function storageUsable() {
   try {

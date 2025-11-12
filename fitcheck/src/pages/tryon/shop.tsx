@@ -7,6 +7,8 @@ import {
 } from "@shopify/shop-minis-react";
 import { useNavigate, useLocation } from "react-router";
 import { apiUrl } from "../../lib/api";
+import { addLook } from "../../lib/tryOnStorage";
+import LoadingStitchBar from "../../components/LoadingStitchBar";
 
 type ShopLocationState = {
   photo?: string;
@@ -83,7 +85,7 @@ function dgroup(label: string, fn: () => void) {
            Component
 ---------------------------- */
 export default function Shop() {
-  const { products: savedProducts } = useSavedProducts(); // user's saved products
+  const { products: savedProducts } = useSavedProducts();
   const navigate = useNavigate();
   const { state } = useLocation() as { state?: ShopLocationState };
 
@@ -477,7 +479,7 @@ export default function Shop() {
       return (
         localStorage.getItem("fullBodyCurrentUrl") ??
         JSON.parse(localStorage.getItem("fullBodyPhotos") || "[]")[0]?.url ??
-        localStorage.getItem("selectedPhoto") ?? // <- extra fallback
+        localStorage.getItem("selectedPhoto") ??
         null
       );
     } catch {
@@ -764,6 +766,7 @@ export default function Shop() {
   function saveCurrentPhoto() {
     if (!bgUrl) return;
     dlog("saveCurrentPhoto", { url: bgUrl, meta: lastMeta });
+    addLook(bgUrl, lastMeta ?? undefined);
     navigate("/saved", {
       state: { photo: bgUrl, meta: lastMeta ?? undefined },
     });
@@ -795,11 +798,7 @@ export default function Shop() {
           />
         </div>
       )}
-      {loading && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 rounded-full bg-black/70 text-white px-4 py-2 text-sm">
-          Generating… (~30s)
-        </div>
-      )}
+      {loading && <LoadingStitchBar label="Stitching your look together…" />}
       {err && (
         <div className="fixed top-4 right-4 z-30 rounded-md bg-red-600 text-white px-3 py-2 text-sm shadow">
           {err}

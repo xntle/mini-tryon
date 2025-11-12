@@ -1,12 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Star, Trash2, Share2 } from "lucide-react";
 import { useProduct, ProductLink } from "@shopify/shop-minis-react";
 
+const FITS_KEY = "fitVaultLooks";
+
 type SavedItem = {
   lookId?: string;
   url: string;
-  productId?: string; // <-- we resolve this with useProduct()
+  productId?: string;
   product?: string;
   merchant?: string;
   price?: number;
@@ -16,28 +18,48 @@ type SavedItem = {
   productUrl?: string;
 };
 
+function ensureIds(arr: SavedItem[]) {
+  return arr.map((x) => (x.lookId ? x : { ...x, lookId: crypto.randomUUID() }));
+}
 function loadAll(): SavedItem[] {
   try {
-    const raw = localStorage.getItem("savedPhotos");
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
+    const fresh = JSON.parse(localStorage.getItem(FITS_KEY) || "[]");
+    const legacy = JSON.parse(localStorage.getItem("savedPhotos") || "[]");
+    const merged = [...fresh];
+    for (const it of Array.isArray(legacy) ? legacy : []) {
+      if (!merged.some((x) => (x.lookId ?? x.url) === (it.lookId ?? it.url)))
+        merged.push(it);
+    }
+    const withIds = ensureIds(merged);
+    localStorage.setItem(FITS_KEY, JSON.stringify(withIds));
+    return withIds;
   } catch {
     return [];
   }
 }
 function saveAll(items: SavedItem[]) {
-  localStorage.setItem("savedPhotos", JSON.stringify(items));
+  localStorage.setItem(FITS_KEY, JSON.stringify(items));
 }
 
 export default function FitDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [items, setItems] = useState<SavedItem[]>(() => loadAll());
 
-  const items = useMemo(loadAll, []);
-  const found =
-    items.find((x) => (x.lookId ? x.lookId === id : x.url === id)) ??
-    items.find((x) => encodeURIComponent(x.lookId ?? x.url) === id);
-  const item = found as SavedItem;
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === FITS_KEY) setItems(loadAll());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const item = useMemo<SavedItem | null>(() => {
+    const found =
+      items.find((x) => (x.lookId ? x.lookId === id : x.url === id)) ??
+      items.find((x) => encodeURIComponent(x.lookId ?? x.url) === id);
+    return found ?? null;
+  }, [items, id]);
 
   if (!item) {
     return (
@@ -55,44 +77,50 @@ export default function FitDetail() {
     );
   }
 
-  // 🔑 Resolve the product from its ID (GID) with the official hook
-  const { product, loading, error } = useProduct({ id: item.productId ?? "" }); // expects 'gid://shopify/Product/123'
-  // Docs: useProduct fetches a single product by ID; it returns {product, loading, error, refetch}. :contentReference[oaicite:0]{index=0}
-  // ProductLink expects the full product object. :contentReference[oaicite:1]{index=1}
+  const { product, loading, error } = useProduct({ id: item.productId ?? "" });
+
+  function persist(next: SavedItem[]) {
+    saveAll(next);
+    setItems(next);
+  }
 
   function toggleStar() {
-    const next = items.map((x) =>
-      (x.lookId ?? x.url) === (item.lookId ?? item.url)
-        ? { ...x, favorite: !x.favorite }
-        : x
-    );
-    saveAll(next);
-    navigate(0);
+    if (item) {
+      const key = item.lookId ?? item.url;
+      const next = items.map((x) =>
+        (x.lookId ?? x.url) === key ? { ...x, favorite: !x.favorite } : x
+      );
+      persist(next); // no navigate(0)
+    }
   }
+
   function deleteLook() {
-    const next = items.filter(
-      (x) => (x.lookId ?? x.url) !== (item.lookId ?? item.url)
-    );
-    saveAll(next);
-    navigate("/saved");
+    if (item) {
+      const key = item.lookId ?? item.url;
+      const next = items.filter((x) => (x.lookId ?? x.url) !== key);
+      persist(next);
+      navigate("/saved");
+    }
   }
+
   async function shareLook() {
-    try {
-      if (navigator.share)
-        await navigator.share({
-          title: item.product ?? "My fit",
-          url: item.url,
-        });
-      else {
-        await navigator.clipboard.writeText(item.url);
-        alert("Link copied to clipboard!");
-      }
-    } catch {}
+    if (item) {
+      try {
+        if (navigator.share)
+          await navigator.share({
+            title: item.product ?? "My fit",
+            url: item.url,
+          });
+        else {
+          await navigator.clipboard.writeText(item.url);
+          alert("Link copied to clipboard!");
+        }
+      } catch {}
+    }
   }
 
   return (
     <div className="relative min-h-dvh bg-black text-white">
-      {/* Fullscreen try-on */}
       <img
         src={item.url}
         alt="Try-on"
@@ -100,7 +128,6 @@ export default function FitDetail() {
         style={{ zIndex: 0 }}
       />
 
-      {/* Top controls (glass) */}
       <div className="fixed top-3 left-1/2 -translate-x-1/2 z-20 w-[min(96vw,680px)]">
         <div className="mx-auto flex items-center gap-2 rounded-full bg-black/30 backdrop-blur-xl ring-1 ring-white/10 px-2 py-1">
           <button
@@ -145,7 +172,6 @@ export default function FitDetail() {
         </div>
       </div>
 
-      {/* Bottom product info (glass) */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-20 w-full">
         <div className="rounded-2xl bg-black/35 backdrop-blur-xl ring-1 ring-white/10 p-3">
           {item.productId ? (
@@ -165,7 +191,6 @@ export default function FitDetail() {
           ) : (
             <>error</>
           )}
-
           {item.ts && (
             <div className="mt-3 flex item-center justify-center text-[11px] text-white/60">
               Saved {new Date(item.ts).toLocaleString()}
