@@ -7,140 +7,16 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
+import {
+  addWithBudgetAndSetCurrent,
+  getCurrentOrFirst,
+} from "../lib/fullBodyStorage";
 
 export type PhotoGalleryButtonProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSelected?: (file: File, dataUrl: string) => void;
 };
-
-const STORE_KEY = "fullBodyPhotos";
-const CURRENT_KEY = "fullBodyCurrentUrl";
-
-function getSavedFullBodyUrl(): string | null {
-  try {
-    const cur = localStorage.getItem(CURRENT_KEY);
-    if (cur) return cur;
-    const raw = localStorage.getItem(STORE_KEY);
-    const arr: Array<{ url: string; ts: number }> = raw ? JSON.parse(raw) : [];
-    return arr[0]?.url ?? null; // newest-first if you unshift
-  } catch {
-    return null;
-  }
-}
-
-/* ---------- helpers copied from BackstageFullBodyLocal ---------- */
-
-type SavedItem = { id: string; url: string; ts: number };
-
-function approxBytesOfDataUrl(dataUrl: string) {
-  const i = dataUrl.indexOf(",");
-  const b64 = i >= 0 ? dataUrl.slice(i + 1) : dataUrl;
-  return Math.floor((b64.length * 3) / 4);
-}
-
-function compressDataUrl(
-  dataUrl: string,
-  maxW = 1200,
-  maxH = 1800,
-  quality = 0.82
-): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      let { width, height } = img;
-      const r = Math.min(maxW / width, maxH / height, 1);
-      const w = Math.round(width * r);
-      const h = Math.round(height * r);
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return resolve(dataUrl);
-      ctx.drawImage(img, 0, 0, w, h);
-      const out = canvas.toDataURL("image/jpeg", quality);
-      resolve(out);
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
-}
-
-function loadAll(): SavedItem[] {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    const arr: any[] = raw ? JSON.parse(raw) : [];
-    // migrate old entries without id
-    const withIds: SavedItem[] = arr.map((x) =>
-      "id" in x
-        ? x
-        : { id: crypto.randomUUID(), url: x.url, ts: x.ts ?? Date.now() }
-    );
-    if (withIds.length !== arr.length || arr.some((x) => !("id" in x))) {
-      localStorage.setItem(STORE_KEY, JSON.stringify(withIds));
-    }
-    return withIds;
-  } catch {
-    return [];
-  }
-}
-
-function saveAll(next: SavedItem[], nextCurrent?: string | null) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(next));
-  if (nextCurrent) {
-    localStorage.setItem(CURRENT_KEY, nextCurrent);
-  } else {
-    localStorage.removeItem(CURRENT_KEY);
-  }
-}
-
-/** Adds dataUrl to STORE_KEY (with dedupe + optional compression),
- * sets CURRENT_KEY to the added url, and returns the final (maybe-compressed) url. */
-async function addDataUrlAndSetCurrent(dataUrl: string): Promise<string> {
-  let items = loadAll();
-
-  // dedupe
-  if (items.some((x) => x.url === dataUrl)) {
-    saveAll(items, dataUrl);
-    return dataUrl;
-  }
-
-  // compress if > ~2MB
-  if (approxBytesOfDataUrl(dataUrl) > 2_000_000) {
-    dataUrl = await compressDataUrl(dataUrl, 1200, 1800, 0.82);
-  }
-
-  const rec: SavedItem = {
-    id: crypto.randomUUID(),
-    url: dataUrl,
-    ts: Date.now(),
-  };
-
-  try {
-    const next = [rec, ...items];
-    saveAll(next, rec.url);
-    return rec.url;
-  } catch {
-    // progressive smaller attempts
-    const steps = [
-      { w: 1000, h: 1500, q: 0.75 },
-      { w: 800, h: 1200, q: 0.7 },
-      { w: 600, h: 900, q: 0.65 },
-    ];
-    for (const s of steps) {
-      const compact = await compressDataUrl(rec.url, s.w, s.h, s.q);
-      const smaller: SavedItem = { ...rec, url: compact };
-      try {
-        const next = [smaller, ...items];
-        saveAll(next, smaller.url);
-        return smaller.url;
-      } catch {}
-    }
-    throw new Error("Storage is full or blocked");
-  }
-}
-
-/* ---------------------------------------------------------------- */
 
 export default function PhotoGalleryButton({
   open,
@@ -165,9 +41,9 @@ export default function PhotoGalleryButton({
   const navigate = useNavigate();
 
   function handleFabClick() {
-    const saved = getSavedFullBodyUrl();
+    const saved = getCurrentOrFirst(); // <— identical selection logic to You page
     if (saved) {
-      sessionStorage.setItem("shop:incomingPhoto", saved); // 🔹 add this
+      sessionStorage.setItem("shop:incomingPhoto", saved);
       navigate("/preferences", { state: { photo: saved } });
       return;
     }
@@ -179,31 +55,21 @@ export default function PhotoGalleryButton({
     e.target.value = "";
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        let dataUrl = String(reader.result);
-        // persist using the same logic as Backstage
-        // inside reader.onload after finalUrl is computed
-        const finalUrl = await addDataUrlAndSetCurrent(dataUrl);
-        sessionStorage.setItem("shop:incomingPhoto", finalUrl);
-        if (onSelected) onSelected(file, finalUrl);
-        navigate("/preferences", { state: { photo: finalUrl } });
-      } catch (err) {
-        console.error("[PhotoGalleryButton] save error:", err);
-        // fallback: still navigate with raw dataUrl if available
-        if (reader.result) {
-          navigate("/preferences", { state: { photo: String(reader.result) } });
-        }
-      } finally {
-        applyOpen(false);
-      }
-    };
-    reader.onerror = () => {
-      console.error("[PhotoGalleryButton] read error");
+    try {
+      const finalUrl = await addWithBudgetAndSetCurrent(file); // <— compress + save + set current
+      sessionStorage.setItem("shop:incomingPhoto", finalUrl);
+      onSelected?.(file, finalUrl);
+      navigate("/preferences", { state: { photo: finalUrl } });
+    } catch (err) {
+      console.error("[PhotoGalleryButton] save error:", err);
+      // very last-resort: still try to read raw + navigate
+      const reader = new FileReader();
+      reader.onload = () =>
+        navigate("/preferences", { state: { photo: String(reader.result) } });
+      reader.readAsDataURL(file);
+    } finally {
       applyOpen(false);
-    };
-    reader.readAsDataURL(file);
+    }
   }
 
   return (
@@ -228,12 +94,7 @@ export default function PhotoGalleryButton({
             <motion.div
               layoutId="fab"
               initial={false}
-              className="
-                pointer-events-auto absolute bottom-2 left-1/2 -translate-x-1/2
-                w-[92vw] max-w-[520px] rounded-3xl
-                bg-black/10 backdrop-blur-md backdrop-saturate-150
-                border border-white/30 shadow-2xl text-white
-              "
+              className="pointer-events-auto absolute bottom-2 left-1/2 -translate-x-1/2 w-[92vw] max-w-[520px] rounded-3xl bg-black/10 backdrop-blur-md backdrop-saturate-150 border border-white/30 shadow-2xl text-white"
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <motion.div
@@ -257,12 +118,7 @@ export default function PhotoGalleryButton({
                   <button
                     type="button"
                     onClick={() => camRef.current?.click()}
-                    className="
-                      w-full flex items-center gap-4 rounded-2xl
-                      bg-black/10 hover:bg-black/15
-                      border border-white/20
-                      px-4 py-4 transition-colors
-                    "
+                    className="w-full flex items-center gap-4 rounded-2xl bg-black/10 hover:bg-black/15 border border-white/20 px-4 py-4 transition-colors"
                   >
                     <div className="h-10 w-10 grid place-items-center rounded-full bg-black/15">
                       <CameraIcon className="h-5 w-5" />
@@ -278,12 +134,7 @@ export default function PhotoGalleryButton({
                   <button
                     type="button"
                     onClick={() => libRef.current?.click()}
-                    className="
-                      w-full flex items-center gap-4 rounded-2xl
-                      bg-black/10 hover:bg-black/15
-                      border border-white/20
-                      px-4 py-4 transition-colors
-                    "
+                    className="w-full flex items-center gap-4 rounded-2xl bg-black/10 hover:bg-black/15 border border-white/20 px-4 py-4 transition-colors"
                   >
                     <div className="h-10 w-10 grid place-items-center rounded-full bg-black/15">
                       <ImageIcon className="h-5 w-5" />

@@ -25,6 +25,7 @@ export default function TryOn() {
           muted
           loop
           playsInline
+          onError={(e) => console.warn("video load error", e)}
         />
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />

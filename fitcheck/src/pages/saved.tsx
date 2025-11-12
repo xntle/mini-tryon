@@ -2,10 +2,26 @@ import { useLocation, useNavigate } from "react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Trash2, Share2, Star, ChevronLeft, InfoIcon, X } from "lucide-react";
 
+const FITS_KEY = "fitVaultLooks";
+
+function loadLooks(): SavedItem[] {
+  const fresh = parseSaved(localStorage.getItem(FITS_KEY));
+  const legacy = parseSaved(localStorage.getItem("savedPhotos"));
+  const merged = [...fresh];
+  for (const it of legacy)
+    if (!merged.some((x) => x.url === it.url)) merged.push(it);
+  const withIds = ensureLookIds(merged);
+  localStorage.setItem(FITS_KEY, JSON.stringify(withIds));
+  return withIds;
+}
+function saveLooks(items: SavedItem[]) {
+  localStorage.setItem(FITS_KEY, JSON.stringify(items));
+}
+
 type SavedItem = {
-  lookId?: string; // unique for this saved look
-  url: string; // try-on image
-  productId?: string; // <-- for useProduct()
+  lookId?: string;
+  url: string;
+  productId?: string;
   product?: string;
   merchant?: string;
   price?: number;
@@ -24,8 +40,14 @@ function parseSaved(raw: string | null): SavedItem[] {
     return [];
   }
 }
-const save = (items: SavedItem[]) =>
-  localStorage.setItem("savedPhotos", JSON.stringify(items));
+const save = (items: SavedItem[]) => {
+  const links = items.map((item) => ({
+    lookId: item.lookId,
+    url: item.url,
+    ts: item.ts,
+  }));
+  localStorage.setItem("savedPhotos", JSON.stringify(links));
+};
 
 function ensureLookIds(items: SavedItem[]) {
   let touched = false;
@@ -46,37 +68,30 @@ export default function Saved() {
   };
   const [items, setItems] = useState<SavedItem[]>([]);
   const [tab, setTab] = useState<"all" | "starred">("all");
-
-  // info modal state
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoStep, setInfoStep] = useState<0 | 1>(0);
 
   useEffect(() => {
-    const existing = ensureLookIds(
-      parseSaved(localStorage.getItem("savedPhotos"))
-    );
-    let merged = existing;
-
+    let existing = loadLooks();
     if (state?.photo && !existing.some((i) => i.url === state.photo)) {
       const incoming: SavedItem = {
         lookId: crypto.randomUUID(),
         url: state.photo,
         ts: Date.now(),
         favorite: !!state?.meta?.favorite,
-        productId: state?.meta?.productId, // <-- saved here
+        productId: state?.meta?.productId,
         product: state?.meta?.product,
         merchant: state?.meta?.merchant,
         price: state?.meta?.price,
         productImage: state?.meta?.productImage,
         productUrl: state?.meta?.productUrl,
       };
-      merged = [incoming, ...existing];
-      save(merged);
+      existing = [incoming, ...existing];
+      saveLooks(existing); // <-- use new key
     }
-    setItems(merged);
+    setItems(existing);
   }, [state?.photo]);
 
-  // close info modal with ESC
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setInfoOpen(false);
@@ -95,15 +110,16 @@ export default function Saved() {
   function deleteByUrl(url: string) {
     const next = items.filter((x) => x.url !== url);
     setItems(next);
-    save(next);
+    saveLooks(next);
   }
   function toggleFavoriteByUrl(url: string) {
     const next = items.map((x) =>
       x.url === url ? { ...x, favorite: !x.favorite } : x
     );
     setItems(next);
-    save(next);
+    saveLooks(next);
   }
+
   async function shareItem(url: string) {
     try {
       if (navigator.share)
