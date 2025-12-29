@@ -1,15 +1,13 @@
 // src/lib/api.ts
-const RAW_BASE = (import.meta.env.VITE_API_BASE || "")
-  .trim()
-  .replace(/\/+$/, "");
 
-function normalizeBase(b: string) {
-  if (!b) return "";
-  return /^https?:\/\//i.test(b) ? b : `https://${b}`; // add https if missing
-}
+/**
+ * Backend API base URL
+ * NOTE: Shop Minis don't support .env files - hardcode your backend URL here
+ * Reference: https://shopify.dev/docs/api/shop-minis/custom-backend
+ */
+const API_BASE_URL = "https://mini-tryon-production.up.railway.app";
 
 export function apiUrl(path: string) {
   const p = path.startsWith("/") ? path : `/${path}`;
-  const base = normalizeBase(RAW_BASE);
-  return base ? `${base}${p}` : p; // dev: returns /api/..., prod: https://host/api/...
+  return `${API_BASE_URL}${p}`;
 }

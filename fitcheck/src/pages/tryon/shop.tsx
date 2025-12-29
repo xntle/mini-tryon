@@ -26,8 +26,6 @@ type LookMeta = {
   productUrl?: string;
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE;
-
 /* ---------------------------
    DEBUG helpers + log bridge
 ---------------------------- */
@@ -442,7 +440,6 @@ export default function Shop() {
   // Startup debug
   useEffect(() => {
     dgroup("BOOT", () => {
-      dlog("API_BASE =", API_BASE);
       dlog("state.photo =", preview(state?.photo));
       dlog("state.tryOnUrl =", preview(state?.tryOnUrl));
     });
