@@ -46,7 +46,7 @@ app.use(
       cb(ok ? null : new Error("Not allowed by CORS"), ok);
     },
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Origin"],
+    allowedHeaders: ["Content-Type", "Authorization", "Origin", "X-User-State"],
     optionsSuccessStatus: 204,
     maxAge: 86400,
   })
