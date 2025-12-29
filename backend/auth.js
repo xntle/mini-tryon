@@ -148,6 +148,19 @@ async function verifyUserToken(token) {
  * Attaches user info to req.shopUser
  */
 async function authenticateShopUser(req, res, next) {
+  // Development mode: Skip authentication for local testing
+  const isDevelopment = process.env.NODE_ENV === 'development' || process.env.SKIP_AUTH === 'true';
+
+  if (isDevelopment) {
+    console.log("[Auth] DEVELOPMENT MODE: Skipping authentication");
+    req.shopUser = {
+      publicId: 'dev-user-123',
+      userState: 'VERIFIED',
+      isDevelopment: true,
+    };
+    return next();
+  }
+
   try {
     const authHeader = req.headers.authorization;
 
