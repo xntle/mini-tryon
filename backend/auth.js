@@ -4,8 +4,9 @@ require("dotenv/config");
 /**
  * Shop Minis Admin API endpoint for token verification
  * https://shopify.dev/docs/api/shop-minis/minis-admin-api/mutations/usertokenverify
+ * Reference: https://github.com/Shopify/shop-minis/blob/main/supabase/functions/auth/index.ts
  */
-const SHOP_MINIS_ADMIN_API = "https://admin.shop.app/minis/api/graphql";
+const SHOP_MINIS_ADMIN_API = "https://server.shop.app/minis/admin-api/alpha/graphql.json";
 // Support both naming conventions
 const SHOP_MINIS_ADMIN_API_KEY = process.env.SHOP_MINIS_API_KEY || process.env.SHOP_MINIS_ADMIN_API_KEY;
 
