@@ -13,23 +13,26 @@ export function useShopAuth() {
    */
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
     try {
+      console.log('[Auth] Generating user token...');
       const { data, userErrors } = await generateUserToken();
 
       if (userErrors && userErrors.length > 0) {
-        console.error('Failed to generate user token:', userErrors);
+        console.error('[Auth] Failed to generate user token:', userErrors);
         throw new Error(`Token generation failed: ${userErrors[0].message}`);
       }
 
       if (!data.token) {
+        console.error('[Auth] No token received, data:', data);
         throw new Error('No token received');
       }
 
+      console.log('[Auth] Token generated successfully, userState:', data.userState);
       return {
         'Authorization': `Bearer ${data.token}`,
         'X-User-State': data.userState || 'UNKNOWN',
       };
     } catch (error) {
-      console.error('Error getting auth headers:', error);
+      console.error('[Auth] Error getting auth headers:', error);
       throw error;
     }
   };

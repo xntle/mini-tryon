@@ -59,6 +59,7 @@ async function verifyUserToken(token) {
   `;
 
   try {
+    console.log("[Auth] Calling Shop Minis Admin API to verify token...");
     const response = await fetch(SHOP_MINIS_ADMIN_API, {
       method: "POST",
       headers: {
@@ -70,11 +71,16 @@ async function verifyUserToken(token) {
       }),
     });
 
+    console.log("[Auth] Admin API response status:", response.status);
+
     if (!response.ok) {
-      throw new Error(`Admin API returned ${response.status}`);
+      const errorText = await response.text();
+      console.error("[Auth] Admin API error response:", errorText);
+      throw new Error(`Admin API returned ${response.status}: ${errorText}`);
     }
 
     const result = await response.json();
+    console.log("[Auth] Admin API result:", JSON.stringify(result, null, 2));
 
     // Check for GraphQL errors
     if (result.errors) {
@@ -117,7 +123,8 @@ async function verifyUserToken(token) {
     console.log("[Auth] Token verified successfully:", { publicId, userState });
     return verifiedData;
   } catch (error) {
-    console.error("[Auth] Token verification error:", error);
+    console.error("[Auth] Token verification error:", error.message);
+    console.error("[Auth] Full error:", error);
     throw error;
   }
 }
