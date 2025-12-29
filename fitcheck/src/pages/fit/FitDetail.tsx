@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useParams } from "react-router";
 import { Star, Trash2, Share2 } from "lucide-react";
-import { useProduct, ProductLink } from "@shopify/shop-minis-react";
+import { useProduct, ProductLink, useNavigateWithTransition } from "@shopify/shop-minis-react";
 
 const FITS_KEY = "fitVaultLooks";
 
@@ -42,7 +42,7 @@ function saveAll(items: SavedItem[]) {
 }
 
 export default function FitDetail() {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithTransition();
   const { id } = useParams<{ id: string }>();
   const [items, setItems] = useState<SavedItem[]>(() => loadAll());
 

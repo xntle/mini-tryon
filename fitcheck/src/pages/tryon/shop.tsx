@@ -4,10 +4,12 @@ import {
   useProductSearch,
   useRecommendedProducts,
   ProductCard,
+  useNavigateWithTransition,
 } from "@shopify/shop-minis-react";
-import { useNavigate, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import { apiUrl } from "../../lib/api";
 import { addLook } from "../../lib/tryOnStorage";
+import { useShopAuth } from "../../lib/auth";
 import LoadingStitchBar from "../../components/LoadingStitchBar";
 
 type ShopLocationState = {
@@ -86,8 +88,9 @@ function dgroup(label: string, fn: () => void) {
 ---------------------------- */
 export default function Shop() {
   const { products: savedProducts } = useSavedProducts();
-  const navigate = useNavigate();
+  const navigate = useNavigateWithTransition();
   const { state } = useLocation() as { state?: ShopLocationState };
+  const { authenticatedFetch, authenticatedFetchWithTimeout } = useShopAuth();
 
   // Get user preferences for search
   const userPreferences = useMemo(() => {
@@ -551,7 +554,7 @@ export default function Shop() {
     dlog("POST", uploadTo);
 
     try {
-      const up = await fetchWithTimeout(
+      const up = await authenticatedFetchWithTimeout(
         uploadTo,
         { method: "POST", body: fd },
         15000
@@ -682,7 +685,7 @@ export default function Shop() {
       });
 
       console.time("[Shop] /api/tryon");
-      const res = await fetch(endpoint, {
+      const res = await authenticatedFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

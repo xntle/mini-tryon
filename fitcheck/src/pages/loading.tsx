@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router";
+import { useLocation } from "react-router";
+import { useNavigateWithTransition } from "@shopify/shop-minis-react";
 
 export default function Loading() {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithTransition();
   const { state } = useLocation() as { state?: any };
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [rotatingIndexes, setRotatingIndexes] = useState<Set<number>>(

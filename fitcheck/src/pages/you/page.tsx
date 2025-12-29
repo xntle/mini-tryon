@@ -12,7 +12,7 @@ import {
   ChevronRight,
   InfoIcon,
 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigateWithTransition } from "@shopify/shop-minis-react";
 
 type SavedItem = { id: string; url: string; ts: number };
 
@@ -178,7 +178,7 @@ async function compressAnyToDataUrl(
 type Notice = { type: "progress" | "success" | "info" | "error"; msg: string };
 
 export default function BackstageFullBodyLocal() {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithTransition();
   const [items, setItems] = useState<SavedItem[]>([]);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
 

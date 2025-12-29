@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import NavBar from "../components/Navbar";
+import outputVideo from "../assets/output.mp4";
 
 export default function TryOn() {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -20,7 +21,7 @@ export default function TryOn() {
         {/* Background image */}
         <video
           className="absolute inset-0 h-full w-full object-cover -z-10"
-          src="/output.mp4"
+          src={outputVideo}
           autoPlay
           muted
           loop

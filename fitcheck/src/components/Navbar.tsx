@@ -1,4 +1,5 @@
-import { NavLink, useLocation } from "react-router";
+import { useLocation } from "react-router";
+import { TransitionLink } from "@shopify/shop-minis-react";
 import { GalleryHorizontalEnd, SquareUserRound } from "lucide-react";
 import PhotoGalleryButton from "../components/GalleryButton";
 
@@ -10,7 +11,7 @@ export default function NavBar() {
   return (
     <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center justify-center bg-transparent rounded-full px-6 py-2">
       <div className="flex items-center justify-between gap-12 px-6 h-16">
-        <NavLink
+        <TransitionLink
           to="/saved"
           aria-label="Saved"
           className={`flex flex-col items-center text-xs ${
@@ -18,11 +19,11 @@ export default function NavBar() {
           }`}
         >
           <GalleryHorizontalEnd className="h-5 w-5 mb-1" />
-        </NavLink>
+        </TransitionLink>
 
         <PhotoGalleryButton />
 
-        <NavLink
+        <TransitionLink
           to="/you"
           aria-label="You"
           className={`flex flex-col items-center text-xs ${
@@ -30,7 +31,7 @@ export default function NavBar() {
           }`}
         >
           <SquareUserRound className="h-5 w-5 mb-1" />
-        </NavLink>
+        </TransitionLink>
       </div>
     </nav>
   );

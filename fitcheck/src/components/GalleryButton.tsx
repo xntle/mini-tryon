@@ -6,7 +6,7 @@ import {
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router";
+import { useNavigateWithTransition } from "@shopify/shop-minis-react";
 import {
   addWithBudgetAndSetCurrent,
   getCurrentOrFirst,
@@ -38,7 +38,7 @@ export default function PhotoGalleryButton({
 
   const libRef = useRef<HTMLInputElement | null>(null);
   const camRef = useRef<HTMLInputElement | null>(null);
-  const navigate = useNavigate();
+  const navigate = useNavigateWithTransition();
 
   function handleFabClick() {
     const saved = getCurrentOrFirst(); // <— identical selection logic to You page

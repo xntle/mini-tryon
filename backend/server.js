@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const { fal } = require("@fal-ai/client");
+const { authenticateShopUser } = require("./auth");
 
 // --- File polyfill for Node < 22
 let FileCtor = global.File;
@@ -132,7 +133,7 @@ async function ensureRemoteUrl(input, tag) {
 app.get("/api/healthz", (_req, res) => res.json({ ok: true }));
 
 // 1) Upload to FAL storage → public HTTPS URL
-app.post("/api/fal-upload", upload.single("file"), async (req, res) => {
+app.post("/api/fal-upload", authenticateShopUser, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "file is required" });
     const { originalname, mimetype, buffer } = req.file;
@@ -148,7 +149,7 @@ app.post("/api/fal-upload", upload.single("file"), async (req, res) => {
 });
 
 // 2) Try-on: accept model_image & garment_image; return { url }
-app.post("/api/tryon", async (req, res) => {
+app.post("/api/tryon", authenticateShopUser, async (req, res) => {
   try {
     let { model_image, garment_image } = req.body || {};
 

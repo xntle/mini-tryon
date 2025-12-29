@@ -1,4 +1,5 @@
-import { useLocation, useNavigate } from "react-router";
+import { useLocation } from "react-router";
+import { useNavigateWithTransition } from "@shopify/shop-minis-react";
 import { useEffect, useMemo, useState } from "react";
 import { Trash2, Share2, Star, ChevronLeft, InfoIcon, X } from "lucide-react";
 
@@ -62,7 +63,7 @@ function ensureLookIds(items: SavedItem[]) {
 }
 
 export default function Saved() {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithTransition();
   const { state } = useLocation() as {
     state?: { photo?: string; meta?: Partial<SavedItem> };
   };

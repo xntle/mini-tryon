@@ -1,6 +1,7 @@
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useLocation } from "react-router";
+import { useLocation } from "react-router";
+import { useNavigateWithTransition } from "@shopify/shop-minis-react";
 import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
 const BYTE_BUDGET_PER_ITEM = 4_500_000;
@@ -143,7 +144,7 @@ const preferenceSections: PreferenceSection[] = [
 ];
 
 export default function Preferences() {
-  const navigate = useNavigate();
+  const navigate = useNavigateWithTransition();
   const { state } = useLocation() as { state?: { photo?: string } };
   const [photo, setPhoto] = useState<string | null>(state?.photo ?? null);
   const [photoError, setPhotoError] = useState<string | null>(null);
