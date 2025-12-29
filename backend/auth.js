@@ -6,6 +6,12 @@ require("dotenv/config");
  * https://shopify.dev/docs/api/shop-minis/minis-admin-api/mutations/usertokenverify
  */
 const SHOP_MINIS_ADMIN_API = "https://admin.shop.app/minis/api/graphql";
+const SHOP_MINIS_ADMIN_API_KEY = process.env.SHOP_MINIS_ADMIN_API_KEY;
+
+if (!SHOP_MINIS_ADMIN_API_KEY) {
+  console.warn("[Auth] WARNING: SHOP_MINIS_ADMIN_API_KEY not set in environment variables!");
+  console.warn("[Auth] Run 'npx shop-minis setup' to generate your API key.");
+}
 
 /**
  * In-memory cache for verified tokens
@@ -59,10 +65,15 @@ async function verifyUserToken(token) {
   `;
 
   try {
+    if (!SHOP_MINIS_ADMIN_API_KEY) {
+      throw new Error("SHOP_MINIS_ADMIN_API_KEY not configured. Run 'npx shop-minis setup' to generate your API key.");
+    }
+
     console.log("[Auth] Calling Shop Minis Admin API to verify token...");
     const response = await fetch(SHOP_MINIS_ADMIN_API, {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${SHOP_MINIS_ADMIN_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
