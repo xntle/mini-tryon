@@ -123,16 +123,9 @@ export default function Saved() {
 
   async function shareItem(url: string) {
     try {
-      if (navigator.share)
-        await navigator.share({
-          title: "Check out my outfit",
-          text: "Here's a look I saved!",
-          url,
-        });
-      else {
-        await navigator.clipboard.writeText(url);
-        alert("Link copied to clipboard!");
-      }
+      // Shop Minis doesn't support navigator.share/clipboard
+      // TODO: Implement Shop Minis SDK share functionality
+      alert(`Share this look: ${url}`);
     } catch {}
   }
 

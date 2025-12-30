@@ -106,15 +106,9 @@ export default function FitDetail() {
   async function shareLook() {
     if (item) {
       try {
-        if (navigator.share)
-          await navigator.share({
-            title: item.product ?? "My fit",
-            url: item.url,
-          });
-        else {
-          await navigator.clipboard.writeText(item.url);
-          alert("Link copied to clipboard!");
-        }
+        // Shop Minis doesn't support navigator.share/clipboard
+        // TODO: Implement Shop Minis SDK share functionality
+        alert(`Share this look: ${item.url}`);
       } catch {}
     }
   }

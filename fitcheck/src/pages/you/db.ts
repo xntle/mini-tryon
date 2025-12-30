@@ -174,10 +174,12 @@ export async function getCurrentId(): Promise<string | null> {
 
 export async function requestPersistence(): Promise<boolean> {
   try {
-    // @ts-ignore
+    // Check if storage API is available (not supported in older iOS Safari)
+    if (!('storage' in navigator)) return false;
+    // eslint-disable-next-line compat/compat
     const persisted = await navigator.storage?.persisted?.();
     if (persisted) return true;
-    // @ts-ignore
+    // eslint-disable-next-line compat/compat
     return (await navigator.storage?.persist?.()) ?? false;
   } catch {
     return false;
