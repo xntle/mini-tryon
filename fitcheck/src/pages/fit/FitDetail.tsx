@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router";
-import { Star, Trash2, Share2 } from "lucide-react";
+import { Star, Trash2, Share2, X } from "lucide-react";
 import { useProduct, ProductLink, useNavigateWithTransition } from "@shopify/shop-minis-react";
 
 const FITS_KEY = "fitVaultLooks";
@@ -45,6 +45,7 @@ export default function FitDetail() {
   const navigate = useNavigateWithTransition();
   const { id } = useParams<{ id: string }>();
   const [items, setItems] = useState<SavedItem[]>(() => loadAll());
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -103,14 +104,27 @@ export default function FitDetail() {
     }
   }
 
-  async function shareLook() {
+  function shareLook() {
     if (item) {
-      try {
-        // Shop Minis doesn't support navigator.share/clipboard
-        // TODO: Implement Shop Minis SDK share functionality
-        alert(`Share this look: ${item.url}`);
-      } catch {}
+      setShareModalOpen(true);
     }
+  }
+
+  function copyToClipboard() {
+    if (!item) return;
+    const input = document.createElement('input');
+    input.value = item.url;
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    try {
+      document.execCommand('copy');
+      alert('Link copied!');
+    } catch {
+      alert(`Copy this link: ${item.url}`);
+    }
+    document.body.removeChild(input);
   }
 
   return (
@@ -135,13 +149,6 @@ export default function FitDetail() {
             {item.product ?? "Fit Detail"}
           </div>
           <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={shareLook}
-              className="px-3 py-1.5 rounded-full hover:bg-white/10"
-              aria-label="Share"
-            >
-              <Share2 className="h-4 w-4" />
-            </button>
             <button
               onClick={toggleStar}
               className="px-3 py-1.5 rounded-full hover:bg-white/10"
@@ -192,6 +199,75 @@ export default function FitDetail() {
           )}
         </div>
       </div>
+
+      {/* Share Modal */}
+      {shareModalOpen && item && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6"
+          onClick={() => setShareModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-md text-zinc-100 shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Share this look</h3>
+              <button
+                onClick={() => setShareModalOpen(false)}
+                className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Twitter */}
+              <a
+                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(item.url)}&text=Check out my outfit!`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-[#1DA1F2] grid place-items-center text-white font-bold">𝕏</div>
+                <span>Share on Twitter/X</span>
+              </a>
+
+              {/* Facebook */}
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(item.url)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-[#1877F2] grid place-items-center text-white font-bold">f</div>
+                <span>Share on Facebook</span>
+              </a>
+
+              {/* WhatsApp */}
+              <a
+                href={`https://wa.me/?text=Check out my outfit! ${encodeURIComponent(item.url)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-[#25D366] grid place-items-center text-white font-bold">W</div>
+                <span>Share on WhatsApp</span>
+              </a>
+
+              {/* Copy Link */}
+              <button
+                onClick={copyToClipboard}
+                className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-zinc-700 grid place-items-center">
+                  <Share2 className="h-5 w-5" />
+                </div>
+                <span>Copy Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

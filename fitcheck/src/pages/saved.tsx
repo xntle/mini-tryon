@@ -71,6 +71,8 @@ export default function Saved() {
   const [tab, setTab] = useState<"all" | "starred">("all");
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoStep, setInfoStep] = useState<0 | 1>(0);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
 
   useEffect(() => {
     let existing = loadLooks();
@@ -121,12 +123,25 @@ export default function Saved() {
     saveLooks(next);
   }
 
-  async function shareItem(url: string) {
+  function shareItem(url: string) {
+    setShareUrl(url);
+    setShareModalOpen(true);
+  }
+
+  function copyToClipboard() {
+    const input = document.createElement('input');
+    input.value = shareUrl;
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
     try {
-      // Shop Minis doesn't support navigator.share/clipboard
-      // TODO: Implement Shop Minis SDK share functionality
-      alert(`Share this look: ${url}`);
-    } catch {}
+      document.execCommand('copy');
+      alert('Link copied!');
+    } catch {
+      alert(`Copy this link: ${shareUrl}`);
+    }
+    document.body.removeChild(input);
   }
 
   return (
@@ -211,23 +226,6 @@ export default function Saved() {
                   loading="lazy"
                 />
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavoriteByUrl(it.url);
-                  }}
-                  className="absolute top-2 right-2 p-2 rounded-full bg-zinc-900/80 border border-zinc-700 hover:bg-zinc-800/90"
-                  aria-label={it.favorite ? "Unstar" : "Star"}
-                >
-                  <Star
-                    size={16}
-                    className={
-                      it.favorite
-                        ? "text-amber-400 fill-amber-400"
-                        : "text-zinc-300"
-                    }
-                  />
-                </button>
                 <div className="absolute bottom-2 left-2 right-2 flex justify-between">
                   <button
                     onClick={(e) => {
@@ -241,11 +239,19 @@ export default function Saved() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      shareItem(it.url);
+                      toggleFavoriteByUrl(it.url);
                     }}
-                    className="p-2 rounded-full bg-zinc-900/80 border border-zinc-700"
+                    className="p-2 rounded-full bg-zinc-900/80 border border-zinc-700 hover:bg-zinc-800/90"
+                    aria-label={it.favorite ? "Unstar" : "Star"}
                   >
-                    <Share2 size={16} />
+                    <Star
+                      size={16}
+                      className={
+                        it.favorite
+                          ? "text-amber-400 fill-amber-400"
+                          : "text-zinc-300"
+                      }
+                    />
                   </button>
                 </div>
                 {(it.product || it.merchant) && (
@@ -258,6 +264,75 @@ export default function Saved() {
           </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      {shareModalOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6"
+          onClick={() => setShareModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-md text-zinc-100 shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Share this look</h3>
+              <button
+                onClick={() => setShareModalOpen(false)}
+                className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Twitter */}
+              <a
+                href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=Check out my outfit!`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-[#1DA1F2] grid place-items-center text-white font-bold">𝕏</div>
+                <span>Share on Twitter/X</span>
+              </a>
+
+              {/* Facebook */}
+              <a
+                href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-[#1877F2] grid place-items-center text-white font-bold">f</div>
+                <span>Share on Facebook</span>
+              </a>
+
+              {/* WhatsApp */}
+              <a
+                href={`https://wa.me/?text=Check out my outfit! ${encodeURIComponent(shareUrl)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-[#25D366] grid place-items-center text-white font-bold">W</div>
+                <span>Share on WhatsApp</span>
+              </a>
+
+              {/* Copy Link */}
+              <button
+                onClick={copyToClipboard}
+                className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              >
+                <div className="h-10 w-10 rounded-full bg-zinc-700 grid place-items-center">
+                  <Share2 className="h-5 w-5" />
+                </div>
+                <span>Copy Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info popup (two-step with Back page) */}
       {infoOpen && (
