@@ -1,5 +1,6 @@
 {
   "name": "fitcheck",
+  "description": "AI-powered virtual fitting room for online shoppers to try on clothes virtually using their smartphone camera.",
   "permissions": ["CAMERA"],
   "privacy_policy_url": "https://thaianle.com/fitcheck/privacy",
   "scopes": [
