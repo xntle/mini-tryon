@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import NavBar from "../components/Navbar";
-import outputVideo from "../assets/output.mp4";
 
 export default function TryOn() {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -18,10 +17,10 @@ export default function TryOn() {
   return (
     <div className="min-h-screen w-full grid place-items-center">
       <div className="h-fill w-fill overflow-hidden rounded-[40px] shadow-2xl ">
-        {/* Background image */}
+        {/* Background video */}
         <video
           className="absolute inset-0 h-full w-full object-cover -z-10"
-          src={outputVideo}
+          src="https://res.cloudinary.com/dfh2gpp3y/video/upload/output_xhfvqf.mp4"
           autoPlay
           muted
           loop

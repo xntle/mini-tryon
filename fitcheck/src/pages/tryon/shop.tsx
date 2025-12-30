@@ -515,17 +515,6 @@ export default function Shop() {
       type: mime,
     });
   }
-  function fetchWithTimeout(
-    input: RequestInfo | URL,
-    init: RequestInit = {},
-    ms = 15000
-  ) {
-    const ctrl = new AbortController();
-    const id = setTimeout(() => ctrl.abort(), ms);
-    return fetch(input, { ...init, signal: ctrl.signal }).finally(() =>
-      clearTimeout(id)
-    );
-  }
   async function ensureHttpsViaUpload(urlOrDataUrl: string): Promise<string> {
     dgroup("UPLOAD ensureHttpsViaUpload()", () => {
       dlog("input =", preview(urlOrDataUrl));

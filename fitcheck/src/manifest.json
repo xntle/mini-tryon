@@ -9,6 +9,10 @@
     "openid"
   ],
   "terms_url": "https://thaianle.com/fitcheck/terms",
-  "trusted_domains": ["mini-tryon-production.up.railway.app", "cdn.fashn.ai"],
+  "trusted_domains": [
+    "mini-tryon-production.up.railway.app",
+    "cdn.fashn.ai",
+    "res.cloudinary.com"
+  ],
   "handle": "fitcheck-ag4o"
 }
