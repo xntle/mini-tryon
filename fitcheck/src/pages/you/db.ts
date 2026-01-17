@@ -35,9 +35,6 @@ async function tx<T>(
   fn: (db: IDBDatabase) => Promise<T>
 ) {
   const db = await openDB();
-  if (mode) {
-    console.log("mode");
-  }
   try {
     return await fn(db);
   } finally {
@@ -70,7 +67,6 @@ async function evictOldest(
     };
     cursorReq.onerror = () => reject(cursorReq.error);
     t.oncomplete = () => {
-      console.log("[IDB] evicted", deleted, "item(s); freed≈", freed, "bytes");
       resolve();
     };
     t.onerror = () => reject(t.error);
@@ -101,10 +97,6 @@ export async function addPhotoBlob(
       await putOnce();
       return rec.id;
     } catch (e: any) {
-      console.warn(
-        "[IDB] put failed; evicting & retrying:",
-        e?.name || e?.message || e
-      );
       await evictOldest(db, blob.size || 1_000_000, 10);
       await putOnce();
       return rec.id;
@@ -176,11 +168,20 @@ export async function requestPersistence(): Promise<boolean> {
   try {
     // Check if storage API is available (not supported in older iOS Safari)
     if (!('storage' in navigator)) return false;
-    // eslint-disable-next-line compat/compat
-    const persisted = await navigator.storage?.persisted?.();
-    if (persisted) return true;
-    // eslint-disable-next-line compat/compat
-    return (await navigator.storage?.persist?.()) ?? false;
+
+    const storage = (navigator as any).storage;
+    if (!storage) return false;
+
+    if (typeof storage.persisted === 'function') {
+      const persisted = await storage.persisted();
+      if (persisted) return true;
+    }
+
+    if (typeof storage.persist === 'function') {
+      return await storage.persist();
+    }
+
+    return false;
   } catch {
     return false;
   }

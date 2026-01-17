@@ -1,5 +1,5 @@
 import { useLocation } from "react-router";
-import { useNavigateWithTransition } from "@shopify/shop-minis-react";
+import { useNavigateWithTransition, Touchable } from "@shopify/shop-minis-react";
 import { useEffect, useMemo, useState } from "react";
 import { Trash2, Share2, Star, ChevronLeft, InfoIcon, X } from "lucide-react";
 
@@ -150,18 +150,18 @@ export default function Saved() {
       <div className="sticky top-0 z-20 bg-zinc-950/90 backdrop-blur border-b border-zinc-800">
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <button
+            <Touchable
               className="px-3 py-1 rounded-full text-sm bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800"
               onClick={() => navigate(-1)}
             >
               <ChevronLeft />
-            </button>
+            </Touchable>
             <div className="font-semibold tracking-wide text-white">
               Fit Vault
             </div>
 
             {/* Info button */}
-            <button
+            <Touchable
               onClick={() => {
                 setInfoStep(0);
                 setInfoOpen(true);
@@ -170,11 +170,11 @@ export default function Saved() {
               aria-label="How Fit Vault works"
             >
               <InfoIcon />
-            </button>
+            </Touchable>
           </div>
           <div className="mt-3 flex items-center justify-center">
             <div className="inline-flex rounded-full bg-zinc-900 p-1 border border-zinc-800">
-              <button
+              <Touchable
                 onClick={() => setTab("all")}
                 className={
                   "px-3 py-1.5 rounded-full text-sm " +
@@ -184,8 +184,8 @@ export default function Saved() {
                 }
               >
                 All<span className="ml-1 text-zinc-500">({allCount})</span>
-              </button>
-              <button
+              </Touchable>
+              <Touchable
                 onClick={() => setTab("starred")}
                 className={
                   "px-3 py-1.5 rounded-full text-sm " +
@@ -196,7 +196,7 @@ export default function Saved() {
               >
                 Starred
                 <span className="ml-1 text-zinc-500">({starredCount})</span>
-              </button>
+              </Touchable>
             </div>
           </div>
         </div>
@@ -219,6 +219,7 @@ export default function Saved() {
                 }
                 title={it.product ?? "Open fit"}
               >
+                {/* eslint-disable-next-line shop-minis/prefer-sdk-components */}
                 <img
                   src={it.url}
                   alt={it.product ?? "Saved Look"}
@@ -227,7 +228,7 @@ export default function Saved() {
                 />
 
                 <div className="absolute bottom-2 left-2 right-2 flex justify-between">
-                  <button
+                  <Touchable
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteByUrl(it.url);
@@ -235,8 +236,8 @@ export default function Saved() {
                     className="p-2 rounded-full bg-zinc-900/80 border border-zinc-700"
                   >
                     <Trash2 size={16} />
-                  </button>
-                  <button
+                  </Touchable>
+                  <Touchable
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFavoriteByUrl(it.url);
@@ -252,7 +253,7 @@ export default function Saved() {
                           : "text-zinc-300"
                       }
                     />
-                  </button>
+                  </Touchable>
                 </div>
                 {(it.product || it.merchant) && (
                   <div className="absolute top-2 left-2 px-2 py-1 max-w-[15vh] truncate rounded-full text-xs bg-zinc-900/80 border border-zinc-700">
@@ -277,12 +278,12 @@ export default function Saved() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-lg">Share this look</h3>
-              <button
+              <Touchable
                 onClick={() => setShareModalOpen(false)}
                 className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </Touchable>
             </div>
 
             <div className="space-y-3">
@@ -320,7 +321,7 @@ export default function Saved() {
               </a>
 
               {/* Copy Link */}
-              <button
+              <Touchable
                 onClick={copyToClipboard}
                 className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
               >
@@ -328,7 +329,7 @@ export default function Saved() {
                   <Share2 className="h-5 w-5" />
                 </div>
                 <span>Copy Link</span>
-              </button>
+              </Touchable>
             </div>
           </div>
         </div>
@@ -350,13 +351,13 @@ export default function Saved() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 {infoStep === 1 ? (
-                  <button
+                  <Touchable
                     onClick={() => setInfoStep(0)}
                     className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
                     aria-label="Back"
                   >
                     <ChevronLeft className="h-5 w-5" />
-                  </button>
+                  </Touchable>
                 ) : (
                   <span className="p-2 -m-2 opacity-0">
                     <ChevronLeft className="h-5 w-5" />
@@ -366,13 +367,13 @@ export default function Saved() {
                   {infoStep === 0 ? "How Fit Vault works" : "Tips & privacy"}
                 </div>
               </div>
-              <button
+              <Touchable
                 onClick={() => setInfoOpen(false)}
                 className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </Touchable>
             </div>
 
             {/* Body */}
@@ -398,18 +399,18 @@ export default function Saved() {
                   </li>
                 </ul>
                 <div className="flex items-center justify-between pt-2">
-                  <button
+                  <Touchable
                     onClick={() => setInfoOpen(false)}
                     className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
                   >
                     Got it
-                  </button>
-                  <button
+                  </Touchable>
+                  <Touchable
                     onClick={() => setInfoStep(1)}
                     className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
                   >
                     Tips & privacy
-                  </button>
+                  </Touchable>
                 </div>
               </div>
             ) : (
@@ -434,18 +435,18 @@ export default function Saved() {
                   </li>
                 </ul>
                 <div className="flex items-center justify-between pt-2">
-                  <button
+                  <Touchable
                     onClick={() => setInfoStep(0)}
                     className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
                   >
                     Back
-                  </button>
-                  <button
+                  </Touchable>
+                  <Touchable
                     onClick={() => setInfoOpen(false)}
                     className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
                   >
                     Done
-                  </button>
+                  </Touchable>
                 </div>
               </div>
             )}

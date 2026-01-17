@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "react-router";
 import { Star, Trash2, Share2, X } from "lucide-react";
-import { useProduct, ProductLink, useNavigateWithTransition } from "@shopify/shop-minis-react";
+import { useProduct, ProductLink, useNavigateWithTransition, Touchable } from "@shopify/shop-minis-react";
 
 const FITS_KEY = "fitVaultLooks";
 
@@ -67,12 +67,12 @@ export default function FitDetail() {
       <div className="min-h-dvh bg-black text-zinc-100 grid place-items-center">
         <div className="text-center">
           <div className="text-lg mb-2">Look not found</div>
-          <button
+          <Touchable
             onClick={() => navigate(-1)}
             className="px-4 py-2 rounded-full bg-zinc-100 text-zinc-900 text-sm"
           >
             Go back
-          </button>
+          </Touchable>
         </div>
       </div>
     );
@@ -129,6 +129,7 @@ export default function FitDetail() {
 
   return (
     <div className="relative min-h-dvh bg-black text-white">
+      {/* eslint-disable-next-line shop-minis/prefer-sdk-components */}
       <img
         src={item.url}
         alt="Try-on"
@@ -138,18 +139,18 @@ export default function FitDetail() {
 
       <div className="fixed top-3 left-1/2 -translate-x-1/2 z-20 w-[min(96vw,680px)]">
         <div className="mx-auto flex items-center gap-2 rounded-full bg-black/30 backdrop-blur-xl ring-1 ring-white/10 px-2 py-1">
-          <button
+          <Touchable
             onClick={() => navigate(-1)}
             className="px-3 py-1.5 rounded-full hover:bg-white/10"
             aria-label="Back"
           >
             ←
-          </button>
+          </Touchable>
           <div className="ml-1 text-sm opacity-90 truncate">
             {item.product ?? "Fit Detail"}
           </div>
           <div className="ml-auto flex items-center gap-1">
-            <button
+            <Touchable
               onClick={toggleStar}
               className="px-3 py-1.5 rounded-full hover:bg-white/10"
               aria-label={item.favorite ? "Unstar" : "Star"}
@@ -161,14 +162,14 @@ export default function FitDetail() {
                     : "h-4 w-4"
                 }
               />
-            </button>
-            <button
+            </Touchable>
+            <Touchable
               onClick={deleteLook}
               className="px-3 py-1.5 rounded-full hover:bg-white/10 text-red-300"
               aria-label="Delete"
             >
               <Trash2 className="h-4 w-4" />
-            </button>
+            </Touchable>
           </div>
         </div>
       </div>
@@ -212,12 +213,12 @@ export default function FitDetail() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-lg">Share this look</h3>
-              <button
+              <Touchable
                 onClick={() => setShareModalOpen(false)}
                 className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </Touchable>
             </div>
 
             <div className="space-y-3">
@@ -255,7 +256,7 @@ export default function FitDetail() {
               </a>
 
               {/* Copy Link */}
-              <button
+              <Touchable
                 onClick={copyToClipboard}
                 className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
               >
@@ -263,7 +264,7 @@ export default function FitDetail() {
                   <Share2 className="h-5 w-5" />
                 </div>
                 <span>Copy Link</span>
-              </button>
+              </Touchable>
             </div>
           </div>
         </div>

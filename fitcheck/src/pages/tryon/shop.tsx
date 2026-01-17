@@ -5,6 +5,7 @@ import {
   useRecommendedProducts,
   ProductCard,
   useNavigateWithTransition,
+  Touchable,
 } from "@shopify/shop-minis-react";
 import { useLocation } from "react-router";
 import { apiUrl } from "../../lib/api";
@@ -66,17 +67,14 @@ function emitLog(...args: any[]) {
 }
 
 function dlog(...args: any[]) {
-  if (DEBUG) console.log("[Shop]", ...args);
   emitLog("[Shop]", ...args);
 }
 
 function dgroup(label: string, fn: () => void) {
-  if (DEBUG) console.group(label);
   emitLog(`\n▼ ${label}`);
   try {
     fn();
   } finally {
-    if (DEBUG) console.groupEnd();
     emitLog(`▲ end: ${label}\n`);
   }
 }
@@ -114,8 +112,6 @@ export default function Shop() {
     const vibe = (
       userPreferences.Vibe?.[0] || "Elegant & Classy"
     ).toLowerCase();
-
-    console.log("🎯 Building search queries for:", { gender, occasion, vibe });
 
     // Generate HIGHLY SPECIFIC search queries
     const queries: string[] = [];
@@ -279,7 +275,6 @@ export default function Shop() {
     }
 
     const finalQueries = [...new Set(queries)].slice(0, 6);
-    console.log("🔍 Final search queries:", finalQueries);
 
     return finalQueries;
   }, [userPreferences]);
@@ -303,51 +298,6 @@ export default function Shop() {
         if (p?.id && !byId.has(p.id)) byId.set(p.id, p);
       });
 
-    // Debug: Log each search result
-    console.log("🔍 Search Results:");
-    console.log(
-      "S1 (",
-      searchQueries[0],
-      "):",
-      s1.products?.length || 0,
-      "products"
-    );
-    console.log(
-      "S2 (",
-      searchQueries[1],
-      "):",
-      s2.products?.length || 0,
-      "products"
-    );
-    console.log(
-      "S3 (",
-      searchQueries[2],
-      "):",
-      s3.products?.length || 0,
-      "products"
-    );
-    console.log(
-      "S4 (",
-      searchQueries[3],
-      "):",
-      s4.products?.length || 0,
-      "products"
-    );
-    console.log(
-      "S5 (",
-      searchQueries[4],
-      "):",
-      s5.products?.length || 0,
-      "products"
-    );
-    console.log(
-      "S6 (",
-      searchQueries[5],
-      "):",
-      s6.products?.length || 0,
-      "products"
-    );
-
     // Add all search results first
     add(s1.products);
     add(s2.products);
@@ -360,13 +310,11 @@ export default function Shop() {
 
     // If no search results, try recommended products
     if (merged.length === 0) {
-      console.log("🔍 No search results found, trying recommended products...");
       merged = recommendedProducts?.products || [];
     }
 
     // Add saved products as fallback
     if (merged.length === 0) {
-      console.log("🔍 No recommended products found, using saved products...");
       merged = savedProducts || [];
     } else {
       // Add saved products to the mix
@@ -374,11 +322,6 @@ export default function Shop() {
       merged = Array.from(byId.values());
     }
 
-    console.log("✅ Final merged products:", merged.length);
-    console.log(
-      "📦 Product names:",
-      merged.map((p) => p?.title || p?.name || "Unknown").slice(0, 5)
-    );
     return merged;
   }, [
     s1.products,
@@ -530,7 +473,6 @@ export default function Shop() {
       );
     }
 
-    console.time("[Shop] fal-upload");
     const blob = await dataUrlToBlob(urlOrDataUrl);
     const fd = new FormData();
 
@@ -548,7 +490,6 @@ export default function Shop() {
       dlog("fal-upload response arrived, status =", up.status);
       const j = await up.json().catch(() => ({}));
       dlog("fal-upload json =", j);
-      console.timeEnd("[Shop] fal-upload");
 
       if (!up.ok) throw new Error(j?.error || `Upload failed (${up.status})`);
       if (!j?.url) throw new Error("Upload returned no url");
@@ -670,7 +611,6 @@ export default function Shop() {
         garment_image: preview(garment_image),
       });
 
-      console.time("[Shop] /api/tryon");
       const res = await authenticatedFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -690,7 +630,6 @@ export default function Shop() {
       } else {
         textBody = await res.text();
       }
-      console.timeEnd("[Shop] /api/tryon");
       dlog("tryon response json =", data ?? "(none)");
       if (textBody) dlog("tryon response text =", preview(textBody, 200));
 
@@ -717,7 +656,6 @@ export default function Shop() {
       if (!outUrl) throw new Error("No URL found in response");
       setBgUrl(outUrl);
     } catch (e: any) {
-      console.error("[TRYON] error (full):", e);
       setErr(
         "Sorry, this item isn’t compatible right now. Try a different one."
       );
@@ -780,6 +718,7 @@ export default function Shop() {
     <div className="pb-24 pt-6 px-4 max-w-xl mx-auto">
       {displayBgUrl && (
         <div className="fixed inset-0 z-0">
+          {/* eslint-disable-next-line shop-minis/prefer-sdk-components */}
           <img
             src={displayBgUrl}
             alt="Your selected look"
@@ -796,13 +735,13 @@ export default function Shop() {
 
       {bgUrl && !loading && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1">
-          <button
+          <Touchable
             type="button"
             onClick={saveCurrentPhoto}
             className="rounded-full bg-black text-white px-5 py-3 text-sm shadow hover:bg-gray-800"
           >
             Save this look
-          </button>
+          </Touchable>
         </div>
       )}
       <div
@@ -819,7 +758,7 @@ export default function Shop() {
         <div className="p-4">
           {!trayDown && (
             <div className="flex items-center justify-center mb-2">
-              <button
+              <Touchable
                 type="button"
                 onClick={() => {
                   dlog("Tray: hide");
@@ -828,7 +767,7 @@ export default function Shop() {
                 className="rounded-full bg-black/70 text-white px-3 py-1.5 text-sm shadow hover:bg-black/80"
               >
                 Hide
-              </button>
+              </Touchable>
             </div>
           )}
 
@@ -857,7 +796,7 @@ export default function Shop() {
                     style={{ width: 200, minWidth: 200 }}
                   >
                     <ProductCard product={p} />
-                    <button
+                    <Touchable
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -867,17 +806,17 @@ export default function Shop() {
                       aria-pressed={isSelected}
                     >
                       {isSelected ? "Selected" : "Try on"}
-                    </button>
+                    </Touchable>
                   </div>
                 );
               })}
               {hasAnyNextPage && (
-                <button
+                <Touchable
                   onClick={fetchMoreAll}
                   className="shrink-0 px-3 py-2 rounded-full border text-sm bg-white"
                 >
                   Load more
-                </button>
+                </Touchable>
               )}
             </div>
           </div>
@@ -886,7 +825,7 @@ export default function Shop() {
 
       {trayDown && (
         <div className="fixed inset-x-0 bottom-0 z-30 mb-20 flex justify-center pb-4">
-          <button
+          <Touchable
             type="button"
             onClick={() => {
               dlog("Tray: show");
@@ -895,7 +834,7 @@ export default function Shop() {
             className="rounded-full bg-black/70 text-white px-4 py-2  text-sm shadow hover:bg-black/80"
           >
             Show recommendations
-          </button>
+          </Touchable>
         </div>
       )}
     </div>

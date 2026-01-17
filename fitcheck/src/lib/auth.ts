@@ -13,12 +13,9 @@ export function useShopAuth() {
    */
   const getAuthHeaders = async (): Promise<Record<string, string>> => {
     try {
-      console.log('[Auth] Generating user token...');
       const { data, userErrors } = await generateUserToken();
 
       if (userErrors && userErrors.length > 0) {
-        console.warn('[Auth] Failed to generate user token:', userErrors);
-        console.warn('[Auth] This is expected in local development - backend will skip auth');
         // Return dummy headers for local development
         return {
           'Authorization': 'Bearer dev-token',
@@ -27,7 +24,6 @@ export function useShopAuth() {
       }
 
       if (!data.token) {
-        console.warn('[Auth] No token received - using development mode');
         // Return dummy headers for local development
         return {
           'Authorization': 'Bearer dev-token',
@@ -35,13 +31,11 @@ export function useShopAuth() {
         };
       }
 
-      console.log('[Auth] Token generated successfully, userState:', data.userState);
       return {
         'Authorization': `Bearer ${data.token}`,
         'X-User-State': data.userState || 'UNKNOWN',
       };
     } catch (error) {
-      console.warn('[Auth] Error getting auth headers (using dev mode):', error);
       // Return dummy headers for local development
       return {
         'Authorization': 'Bearer dev-token',

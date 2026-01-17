@@ -1,7 +1,7 @@
 import { ChevronLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router";
-import { useNavigateWithTransition } from "@shopify/shop-minis-react";
+import { useNavigateWithTransition, Touchable } from "@shopify/shop-minis-react";
 import { BUCKETS, buildSearchPlan, BucketKey } from "../lib/searchPlan";
 
 const BYTE_BUDGET_PER_ITEM = 4_500_000;
@@ -179,7 +179,6 @@ export default function Preferences() {
         sessionStorage.setItem("shop:incomingPhoto", small);
         setPhotoError(null);
       } catch (e: any) {
-        console.warn("[Preferences] photo persist skipped:", e?.message || e);
         setPhoto(state?.photo ?? null); // keep in memory so UX continues
         setPhotoError(
           "We couldn't save your photo locally (it may be too large). It will still be used for this session."
@@ -229,12 +228,12 @@ export default function Preferences() {
     <div className="min-h-screen bg-gray-50 p-4">
       {/* Header */}
       <div className="flex items-center mb-8">
-        <button
+        <Touchable
           onClick={() => navigate(-1)}
           className="mr-4 p-2 hover:bg-gray-200 rounded-full transition-colors"
         >
           <ChevronLeft />
-        </button>
+        </Touchable>
         <h1 className="text-2xl font-semibold">Preferences</h1>
         <div className="ml-auto text-sm text-gray-500">
           {photo ? "Photo added" : "Add a full body photo to continue"}
@@ -254,7 +253,7 @@ export default function Preferences() {
             <h2 className="text-lg font-medium mb-4">{section.title}</h2>
             <div className="flex flex-wrap gap-3">
               {section.options.map((option) => (
-                <button
+                <Touchable
                   key={option}
                   onClick={() =>
                     handleBadgeClick(section.title, option, section.multiSelect)
@@ -270,7 +269,7 @@ export default function Preferences() {
                   >
                     {option}
                   </div>
-                </button>
+                </Touchable>
               ))}
             </div>
           </div>
@@ -294,7 +293,7 @@ export default function Preferences() {
 
       {/* Save */}
       <div className="mt-12 mb-8">
-        <button
+        <Touchable
           onClick={() => {
             try {
               if (!storageUsable()) throw new Error("localStorage unavailable");
@@ -304,15 +303,15 @@ export default function Preferences() {
                 JSON.stringify(selections)
               );
             } catch (e) {
-              console.warn("Saving preferences failed:", e);
+              // Silently fail
             }
             navigate("/loading", { state: { photo } });
           }}
-          className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50"
+          className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50 text-center"
           disabled={!photo}
         >
           Save and Next
-        </button>
+        </Touchable>
       </div>
     </div>
   );

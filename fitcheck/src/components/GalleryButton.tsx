@@ -6,7 +6,7 @@ import {
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigateWithTransition } from "@shopify/shop-minis-react";
+import { useNavigateWithTransition, Touchable } from "@shopify/shop-minis-react";
 import {
   addWithBudgetAndSetCurrent,
   getCurrentOrFirst,
@@ -61,7 +61,6 @@ export default function PhotoGalleryButton({
       onSelected?.(file, finalUrl);
       navigate("/preferences", { state: { photo: finalUrl } });
     } catch (err) {
-      console.error("[PhotoGalleryButton] save error:", err);
       // very last-resort: still try to read raw + navigate
       const reader = new FileReader();
       reader.onload = () =>
@@ -105,18 +104,17 @@ export default function PhotoGalleryButton({
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">Snap a pic</h3>
-                  <button
+                  <Touchable
                     onClick={() => applyOpen(false)}
                     aria-label="Close"
                     className="p-2 -m-2 rounded-full hover:bg-black/15"
                   >
                     <X className="h-5 w-5" />
-                  </button>
+                  </Touchable>
                 </div>
 
                 <div className="flex flex-col gap-5">
-                  <button
-                    type="button"
+                  <Touchable
                     onClick={() => camRef.current?.click()}
                     className="w-full flex items-center gap-4 rounded-2xl bg-black/10 hover:bg-black/15 border border-white/20 px-4 py-4 transition-colors"
                   >
@@ -129,10 +127,9 @@ export default function PhotoGalleryButton({
                         Take a photo to search
                       </div>
                     </div>
-                  </button>
+                  </Touchable>
 
-                  <button
-                    type="button"
+                  <Touchable
                     onClick={() => libRef.current?.click()}
                     className="w-full flex items-center gap-4 rounded-2xl bg-black/10 hover:bg-black/15 border border-white/20 px-4 py-4 transition-colors"
                   >
@@ -145,7 +142,7 @@ export default function PhotoGalleryButton({
                         Choose from your photos
                       </div>
                     </div>
-                  </button>
+                  </Touchable>
                 </div>
               </motion.div>
             </motion.div>

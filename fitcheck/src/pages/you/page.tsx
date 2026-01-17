@@ -12,7 +12,7 @@ import {
   ChevronRight,
   InfoIcon,
 } from "lucide-react";
-import { useNavigateWithTransition } from "@shopify/shop-minis-react";
+import { useNavigateWithTransition, Touchable, Image } from "@shopify/shop-minis-react";
 
 type SavedItem = { id: string; url: string; ts: number };
 
@@ -84,7 +84,7 @@ function useDisplayUrl(src: string | null) {
 const Thumb = ({ url }: { url: string }) => {
   const src = useDisplayUrl(url);
   return (
-    <img src={src ?? url} alt="Saved" className="h-full w-full object-cover" />
+    <Image src={src ?? url} alt="Saved" className="h-full w-full object-cover" />
   );
 };
 
@@ -301,7 +301,6 @@ export default function BackstageFullBodyLocal() {
       showNotice({ type: "success", msg: "Saved" });
       setAddOpen(false);
     } catch (err: any) {
-      console.error("[Save photo] error:", err);
       showNotice({
         type: "error",
         msg: err?.message || "Failed to save photo",
@@ -377,14 +376,14 @@ export default function BackstageFullBodyLocal() {
       {/* Top bar */}
       <div className="sticky top-0 z-20 border-b border-zinc-900/60 bg-gradient-to-b from-zinc-950 to-zinc-950/0">
         <div className="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button
+          <Touchable
             className="px-3 py-1 rounded-full text-sm bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800"
             onClick={() => navigate(-1)}
           >
             <ChevronLeft />
-          </button>
+          </Touchable>
           <div className="font-semibold tracking-wide text-zinc-200">You</div>
-          <button
+          <Touchable
             onClick={() => {
               setInfoStep(0);
               setInfoOpen(true);
@@ -393,7 +392,7 @@ export default function BackstageFullBodyLocal() {
             aria-label="How to take a good full body photo"
           >
             <InfoIcon className="h-5 w-5" />
-          </button>
+          </Touchable>
         </div>
       </div>
 
@@ -402,6 +401,7 @@ export default function BackstageFullBodyLocal() {
         <div className="relative rounded-xl overflow-hidden bg-zinc-950 border border-zinc-900 shadow-inner">
           <div className="w-full h-[46vh] grid place-items-center bg-black">
             {displayUrl ? (
+              // eslint-disable-next-line shop-minis/prefer-sdk-components
               <img
                 src={displayUrl}
                 alt="Current full body"
@@ -421,13 +421,13 @@ export default function BackstageFullBodyLocal() {
                   Current
                 </span>
               </div>
-              <button
+              <Touchable
                 onClick={removeCurrent}
                 aria-label="Delete current"
                 className="absolute bottom-3 right-3 h-12 w-12 rounded-full grid place-items-center bg-zinc-900/80 text-zinc-100 border border-zinc-700 shadow hover:bg-zinc-900"
               >
                 <Trash2 className="h-5 w-5" />
-              </button>
+              </Touchable>
             </>
           )}
         </div>
@@ -443,22 +443,22 @@ export default function BackstageFullBodyLocal() {
           <div className="pointer-events-none absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-zinc-950 to-transparent" />
           <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-zinc-950 to-transparent" />
 
-          <button
+          <Touchable
             type="button"
             onClick={() => scrollRail(-200)}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 hidden sm:inline-flex rounded-full bg-zinc-900/70 hover:bg-zinc-800/80 border border-zinc-700 p-2 shadow"
             aria-label="Scroll left"
           >
             <ChevronLeft className="h-5 w-5 text-zinc-200" />
-          </button>
-          <button
+          </Touchable>
+          <Touchable
             type="button"
             onClick={() => scrollRail(200)}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden sm:inline-flex rounded-full bg-zinc-900/70 hover:bg-zinc-800/80 border border-zinc-700 p-2 shadow"
             aria-label="Scroll right"
           >
             <ChevronRight className="h-5 w-5 text-zinc-200" />
-          </button>
+          </Touchable>
 
           <div
             ref={railRef}
@@ -468,7 +468,7 @@ export default function BackstageFullBodyLocal() {
             <style>{`div::-webkit-scrollbar { display: none; height: 0; width: 0; }`}</style>
 
             {/* Add tile */}
-            <button
+            <Touchable
               onClick={() => setAddOpen(true)}
               disabled={saving}
               className={`relative shrink-0 snap-center aspect-[3/5] w-24 sm:w-28 rounded-lg border-2 grid place-items-center transition-colors ${
@@ -485,11 +485,11 @@ export default function BackstageFullBodyLocal() {
                 </div>
                 <span className="text-xs">{saving ? "Saving…" : "Add"}</span>
               </div>
-            </button>
+            </Touchable>
 
             {/* First */}
             {first ? (
-              <button
+              <Touchable
                 onClick={() => saveAll(items, first.url)}
                 className={`relative shrink-0 snap-center aspect-[3/5] w-24 sm:w-28 rounded-lg border-2 overflow-hidden bg-zinc-900 ${
                   currentUrl === first.url
@@ -503,14 +503,14 @@ export default function BackstageFullBodyLocal() {
                 aria-selected={currentUrl === first.url}
               >
                 <Thumb url={first.url} />
-              </button>
+              </Touchable>
             ) : (
               <div className="relative shrink-0 snap-center aspect-[3/5] w-24 sm:w-28 rounded-lg border-2 border-transparent" />
             )}
 
             {/* Rest */}
             {rest.map((it) => (
-              <button
+              <Touchable
                 key={it.id}
                 onClick={() => saveAll(items, it.url)}
                 className={`relative shrink-0 snap-center aspect-[3/5] w-24 sm:w-28 rounded-lg border-2 overflow-hidden bg-zinc-900 ${
@@ -524,7 +524,7 @@ export default function BackstageFullBodyLocal() {
                 aria-selected={currentUrl === it.url}
               >
                 <Thumb url={it.url} />
-              </button>
+              </Touchable>
             ))}
           </div>
         </div>
@@ -544,17 +544,17 @@ export default function BackstageFullBodyLocal() {
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <div className="font-medium">Add photo</div>
-              <button
+              <Touchable
                 onClick={() => setAddOpen(false)}
                 disabled={saving}
                 className="p-2 -m-2 rounded-full hover:bg-zinc-800/70 disabled:opacity-50"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </Touchable>
             </div>
             <div className="px-4 pb-4 flex flex-col gap-3">
-              <button
+              <Touchable
                 type="button"
                 onClick={() => camRef.current?.click()}
                 disabled={saving}
@@ -569,8 +569,8 @@ export default function BackstageFullBodyLocal() {
                     Take a full body photo
                   </div>
                 </div>
-              </button>
-              <button
+              </Touchable>
+              <Touchable
                 type="button"
                 onClick={() => libRef.current?.click()}
                 disabled={saving}
@@ -585,7 +585,7 @@ export default function BackstageFullBodyLocal() {
                     Choose from your gallery
                   </div>
                 </div>
-              </button>
+              </Touchable>
             </div>
           </div>
         </div>
@@ -606,13 +606,13 @@ export default function BackstageFullBodyLocal() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 {infoStep === 1 ? (
-                  <button
+                  <Touchable
                     onClick={() => setInfoStep(0)}
                     className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
                     aria-label="Back"
                   >
                     <ChevronLeft className="h-5 w-5" />
-                  </button>
+                  </Touchable>
                 ) : (
                   <span className="p-2 -m-2 opacity-0">
                     <ChevronLeft className="h-5 w-5" />
@@ -624,13 +624,13 @@ export default function BackstageFullBodyLocal() {
                     : "Why we ask for it"}
                 </div>
               </div>
-              <button
+              <Touchable
                 onClick={() => setInfoOpen(false)}
                 className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </Touchable>
             </div>
             <div className="px-4 py-4 text-sm leading-relaxed space-y-3">
               {infoStep === 0 ? (
@@ -649,18 +649,18 @@ export default function BackstageFullBodyLocal() {
                     </li>
                   </ul>
                   <div className="flex items-center justify-between pt-2">
-                    <button
+                    <Touchable
                       onClick={() => setInfoOpen(false)}
                       className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
                     >
                       Got it
-                    </button>
-                    <button
+                    </Touchable>
+                    <Touchable
                       onClick={() => setInfoStep(1)}
                       className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
                     >
                       Why this?
-                    </button>
+                    </Touchable>
                   </div>
                 </>
               ) : (
@@ -675,18 +675,18 @@ export default function BackstageFullBodyLocal() {
                     <li>Stored only on your device unless you upload.</li>
                   </ul>
                   <div className="flex items-center justify-between pt-2">
-                    <button
+                    <Touchable
                       onClick={() => setInfoStep(0)}
                       className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
                     >
                       Back
-                    </button>
-                    <button
+                    </Touchable>
+                    <Touchable
                       onClick={() => setInfoOpen(false)}
                       className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white hover:bg-fuchsia-500 border border-fuchsia-400/60"
                     >
                       Done
-                    </button>
+                    </Touchable>
                   </div>
                 </>
               )}
