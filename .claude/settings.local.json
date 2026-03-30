@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(cat:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx shop-minis setup)",
+      "Bash(git push:*)",
+      "Bash(npm run lint)"
     ]
   }
 }

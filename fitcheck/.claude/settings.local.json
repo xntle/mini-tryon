@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm start)",
       "Bash(npx eslint:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

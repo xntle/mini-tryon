@@ -109,9 +109,6 @@ export default function Shop() {
     const occasion = (
       userPreferences.Occasion?.[0] || "Wedding/Engagement"
     ).toLowerCase();
-    const vibe = (
-      userPreferences.Vibe?.[0] || "Elegant & Classy"
-    ).toLowerCase();
 
     // Generate HIGHLY SPECIFIC search queries
     const queries: string[] = [];
@@ -727,6 +724,28 @@ export default function Shop() {
         </div>
       )}
       {loading && <LoadingStitchBar label="Stitching your look together…" />}
+      {DEBUG && !loading && (
+        <Touchable
+          onClick={() => {
+            setLoading(true);
+            setTimeout(() => setLoading(false), 4000);
+          }}
+          style={{
+            position: "fixed",
+            bottom: "120px",
+            right: "12px",
+            zIndex: 60,
+            background: "rgba(255,200,0,0.9)",
+            color: "#000",
+            borderRadius: "8px",
+            padding: "6px 12px",
+            fontSize: "12px",
+            fontWeight: 600,
+          }}
+        >
+          ⚡ Test loader
+        </Touchable>
+      )}
       {err && (
         <div className="fixed top-4 right-4 z-30 rounded-md bg-red-600 text-white px-3 py-2 text-sm shadow">
           {err}
@@ -736,7 +755,6 @@ export default function Shop() {
       {bgUrl && !loading && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1">
           <Touchable
-            type="button"
             onClick={saveCurrentPhoto}
             className="rounded-full bg-black text-white px-5 py-3 text-sm shadow hover:bg-gray-800"
           >
@@ -759,7 +777,6 @@ export default function Shop() {
           {!trayDown && (
             <div className="flex items-center justify-center mb-2">
               <Touchable
-                type="button"
                 onClick={() => {
                   dlog("Tray: hide");
                   setTrayDown(true);
@@ -797,7 +814,6 @@ export default function Shop() {
                   >
                     <ProductCard product={p} />
                     <Touchable
-                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelect(p);
@@ -826,7 +842,6 @@ export default function Shop() {
       {trayDown && (
         <div className="fixed inset-x-0 bottom-0 z-30 mb-20 flex justify-center pb-4">
           <Touchable
-            type="button"
             onClick={() => {
               dlog("Tray: show");
               setTrayDown(false);

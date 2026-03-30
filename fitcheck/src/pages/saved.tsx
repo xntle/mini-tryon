@@ -72,7 +72,7 @@ export default function Saved() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoStep, setInfoStep] = useState<0 | 1>(0);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [shareUrl, setShareUrl] = useState("");
+  const [shareUrl] = useState("");
 
   useEffect(() => {
     let existing = loadLooks();
@@ -121,11 +121,6 @@ export default function Saved() {
     );
     setItems(next);
     saveLooks(next);
-  }
-
-  function shareItem(url: string) {
-    setShareUrl(url);
-    setShareModalOpen(true);
   }
 
   function copyToClipboard() {

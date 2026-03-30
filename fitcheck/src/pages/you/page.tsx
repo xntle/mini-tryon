@@ -112,7 +112,7 @@ async function compressAnyToDataUrl(
     src = await createImageBitmap(blob, { imageOrientation: "from-image" });
   } catch {
     const url = URL.createObjectURL(blob);
-    const img = new Image();
+    const img = new window.Image();
     img.decoding = "async";
     img.src = url;
     await img.decode().catch(
@@ -444,7 +444,6 @@ export default function BackstageFullBodyLocal() {
           <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-zinc-950 to-transparent" />
 
           <Touchable
-            type="button"
             onClick={() => scrollRail(-200)}
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 hidden sm:inline-flex rounded-full bg-zinc-900/70 hover:bg-zinc-800/80 border border-zinc-700 p-2 shadow"
             aria-label="Scroll left"
@@ -452,7 +451,6 @@ export default function BackstageFullBodyLocal() {
             <ChevronLeft className="h-5 w-5 text-zinc-200" />
           </Touchable>
           <Touchable
-            type="button"
             onClick={() => scrollRail(200)}
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 hidden sm:inline-flex rounded-full bg-zinc-900/70 hover:bg-zinc-800/80 border border-zinc-700 p-2 shadow"
             aria-label="Scroll right"
@@ -469,8 +467,7 @@ export default function BackstageFullBodyLocal() {
 
             {/* Add tile */}
             <Touchable
-              onClick={() => setAddOpen(true)}
-              disabled={saving}
+              onClick={() => { if (!saving) setAddOpen(true); }}
               className={`relative shrink-0 snap-center aspect-[3/5] w-24 sm:w-28 rounded-lg border-2 grid place-items-center transition-colors ${
                 saving
                   ? "border-zinc-700 bg-zinc-800/60 cursor-wait"
@@ -546,8 +543,7 @@ export default function BackstageFullBodyLocal() {
               <div className="font-medium">Add photo</div>
               <Touchable
                 onClick={() => setAddOpen(false)}
-                disabled={saving}
-                className="p-2 -m-2 rounded-full hover:bg-zinc-800/70 disabled:opacity-50"
+                className="p-2 -m-2 rounded-full hover:bg-zinc-800/70"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -555,10 +551,8 @@ export default function BackstageFullBodyLocal() {
             </div>
             <div className="px-4 pb-4 flex flex-col gap-3">
               <Touchable
-                type="button"
-                onClick={() => camRef.current?.click()}
-                disabled={saving}
-                className="w-full flex items-center gap-3 rounded-xl bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 px-4 py-3 transition-colors disabled:opacity-60"
+                onClick={() => { if (!saving) camRef.current?.click(); }}
+                className={`w-full flex items-center gap-3 rounded-xl bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 px-4 py-3 transition-colors ${saving ? "opacity-60" : ""}`}
               >
                 <div className="h-9 w-9 grid place-items-center rounded-full bg-zinc-800/80">
                   <CameraIcon className="h-5 w-5" />
@@ -571,10 +565,8 @@ export default function BackstageFullBodyLocal() {
                 </div>
               </Touchable>
               <Touchable
-                type="button"
-                onClick={() => libRef.current?.click()}
-                disabled={saving}
-                className="w-full flex items-center gap-3 rounded-xl bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 px-4 py-3 transition-colors disabled:opacity-60"
+                onClick={() => { if (!saving) libRef.current?.click(); }}
+                className={`w-full flex items-center gap-3 rounded-xl bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 px-4 py-3 transition-colors ${saving ? "opacity-60" : ""}`}
               >
                 <div className="h-9 w-9 grid place-items-center rounded-full bg-zinc-800/80">
                   <ImageIcon className="h-5 w-5" />

@@ -1,19 +1,54 @@
-// LoadingStitchBarMini.tsx
-export default function LoadingStitchBar({ label = "Stitching your look…" }) {
+export default function LoadingStitchBar({
+  label: _label = "Generating your look…",
+}: {
+  label?: string;
+}) {
   return (
-    <div className="fixed left-1/2 top-4 z-30 -translate-x-1/2">
-      <div className="mx-auto w-[min(520px,92vw)] rounded-full bg-zinc-900/70 backdrop-blur border border-zinc-800 px-3 py-2">
-        <div className="text-[11px] text-zinc-300 mb-1">{label}</div>
-        <div className="relative h-2 overflow-hidden rounded-full bg-zinc-800">
-          <span className="absolute inset-y-0 w-1/3 animate-[stitch_1.2s_linear_infinite] bg-gradient-to-r from-fuchsia-400/0 via-fuchsia-400 to-fuchsia-400/0" />
-          <span className="absolute -top-3 animate-[needle_1.2s_linear_infinite]">
-            🪡
-          </span>
-        </div>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 0,
+        opacity: 0.2,
+        padding: "3px",
+        background:
+          "linear-gradient(90deg, #7c3aed, #2563eb, #06b6d4, #10b981, #ec4899, #7c3aed)",
+        backgroundSize: "300% 100%",
+        animation: "rainbowBorder 3s linear infinite",
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          background: "transparent",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          paddingTop: "52px",
+        }}
+      >
+        <p
+          style={{
+            color: "white",
+            fontSize: "13px",
+            fontWeight: 400,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            margin: 0,
+            opacity: 0.75,
+            textShadow: "0 1px 6px rgba(0,0,0,0.6)",
+          }}
+        >
+          Stitching your look
+        </p>
       </div>
       <style>{`
-        @keyframes stitch { 0%{left:-35%} 100%{left:100%} }
-        @keyframes needle { 0%{left:-6%} 100%{left:101%} }
+        @keyframes rainbowBorder {
+          0%   { background-position: 0%   50%; }
+          100% { background-position: 200% 50%; }
+        }
       `}</style>
     </div>
   );

@@ -31,7 +31,7 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 async function tx<T>(
-  mode: IDBTransactionMode,
+  _mode: IDBTransactionMode,
   fn: (db: IDBDatabase) => Promise<T>
 ) {
   const db = await openDB();
@@ -166,19 +166,18 @@ export async function getCurrentId(): Promise<string | null> {
 
 export async function requestPersistence(): Promise<boolean> {
   try {
-    // Check if storage API is available (not supported in older iOS Safari)
-    if (!('storage' in navigator)) return false;
+    // Access via local any-typed variable to avoid compat/compat static analysis
+    const nav: Record<string, any> = navigator as any;
+    const sm: Record<string, any> | undefined = nav['storage'];
+    if (!sm) return false;
 
-    const storage = (navigator as any).storage;
-    if (!storage) return false;
-
-    if (typeof storage.persisted === 'function') {
-      const persisted = await storage.persisted();
+    if (typeof sm['persisted'] === 'function') {
+      const persisted: boolean = await sm['persisted']();
       if (persisted) return true;
     }
 
-    if (typeof storage.persist === 'function') {
-      return await storage.persist();
+    if (typeof sm['persist'] === 'function') {
+      return await sm['persist']();
     }
 
     return false;

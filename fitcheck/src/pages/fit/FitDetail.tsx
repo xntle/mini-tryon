@@ -104,12 +104,6 @@ export default function FitDetail() {
     }
   }
 
-  function shareLook() {
-    if (item) {
-      setShareModalOpen(true);
-    }
-  }
-
   function copyToClipboard() {
     if (!item) return;
     const input = document.createElement('input');

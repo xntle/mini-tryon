@@ -295,6 +295,7 @@ export default function Preferences() {
       <div className="mt-12 mb-8">
         <Touchable
           onClick={() => {
+            if (!photo) return;
             try {
               if (!storageUsable()) throw new Error("localStorage unavailable");
               // preferences are tiny — safe to store
@@ -307,8 +308,7 @@ export default function Preferences() {
             }
             navigate("/loading", { state: { photo } });
           }}
-          className="w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 disabled:opacity-50 text-center"
-          disabled={!photo}
+          className={`w-full bg-black text-white py-4 rounded-lg font-medium text-lg hover:bg-gray-800 text-center ${!photo ? "opacity-50" : ""}`}
         >
           Save and Next
         </Touchable>
